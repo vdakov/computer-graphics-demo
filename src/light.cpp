@@ -6,6 +6,7 @@ DISABLE_WARNINGS_PUSH()
 #include <glm/geometric.hpp>
 DISABLE_WARNINGS_POP()
 #include <cmath>
+#include <iostream>
 
 
 // samples a segment light source
@@ -30,8 +31,22 @@ void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm:
 // returns 1.0 if sample is visible, 0.0 otherwise
 float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& debugColor, const BvhInterface& bvh, const Features& features, Ray ray, HitInfo hitInfo)
 {
-    // TODO: implement this function.
-    return 1.0;
+    glm::vec3 p = ray.origin + ray.direction * ray.t;
+    glm::vec3 dir = glm::normalize(samplePos - p);
+    float t = (samplePos - p).x / dir.x;
+
+    Ray r;
+    r.t = t;
+    r.origin = p;
+    r.direction = dir;
+
+    if (bvh.intersect(r, hitInfo, features)) {
+        drawRay(r, debugColor); //Visual debug
+        return 0.0;
+    } else {
+        drawRay(r, glm::vec3 { 1 }); //Visual debug 
+        return 1.0;
+    }
 }
 
 // given an intersection, computes the contribution from all light sources at the intersection point
