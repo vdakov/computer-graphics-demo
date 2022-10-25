@@ -198,3 +198,25 @@ void drawRay(const Ray& ray, const glm::vec3& color)
 
     glPopAttrib();
 }
+
+
+/*
+* Visual Debug Function For Drawing Normals
+* Takes the given vertex, which inside of it has fields position and normal 
+* Uses OpenGL function to draw a line between those two positions with a given color 
+* 
+* Used when a ray hits a triangle to show the normals of the vertices of the triangle in order to compare them to
+* the normal of the intersection point, computed in "interpolate.cpp"
+*/
+void drawNormal(const Vertex& v,  const glm::vec3& color)
+{
+    if (!enableDebugDraw) {
+        return;
+    }
+    glBegin(GL_LINES);
+    glColor3fv(glm::value_ptr(color));
+    glVertex3fv(glm::value_ptr(v.position));
+    glVertex3fv(glm::value_ptr(v.position+v.normal));
+    glEnd();
+
+}
