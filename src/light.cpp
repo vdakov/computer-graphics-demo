@@ -31,14 +31,19 @@ void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm:
 // returns 1.0 if sample is visible, 0.0 otherwise
 float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& debugColor, const BvhInterface& bvh, const Features& features, Ray ray, HitInfo hitInfo)
 {
+    
+
     glm::vec3 p = ray.origin + ray.direction * ray.t;
     glm::vec3 dir = glm::normalize(samplePos - p);
     float t = (samplePos - p).x / dir.x;
 
     Ray r;
     r.t = t;
-    r.origin = p;
+    r.origin = p + dir * FLT_EPSILON;
     r.direction = dir;
+    if (glm::dot(hitInfo.normal, r.direction * r.t + r.origin) < 0) {
+        return 0.0;
+    }
 
     if (bvh.intersect(r, hitInfo, features)) {
         drawRay(r, debugColor); //Visual debug
