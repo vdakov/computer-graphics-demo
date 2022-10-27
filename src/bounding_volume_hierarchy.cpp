@@ -5,7 +5,10 @@
 #include "texture.h"
 #include "interpolate.h"
 #include <glm/glm.hpp>
+#include "draw.cpp"
+#include "interpolate.cpp"
 
+void debugNormalInterpolation(const Vertex& v0, const Vertex& v1, const Vertex& v2, Ray& ray, const Features& features);
 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
@@ -67,8 +70,13 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
 // by a bounding volume hierarchy acceleration structure as described in the assignment. You can change any
 // file you like, including bounding_volume_hierarchy.h.
 bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Features& features) const
-{
+{   
     // If BVH is not enabled, use the naive implementation.
+    float currentRay = ray.t;
+     Vertex v_0;
+     Vertex v_1;
+     Vertex v_2;
+
     if (!features.enableAccelStructure) {
         bool hit = false;
         // Intersect with all triangles of all meshes.
@@ -79,13 +87,27 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 const auto v2 = mesh.vertices[tri[2]];
                 if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
                     hitInfo.material = mesh.material;
+                    hitInfo.normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
                     hit = true;
+                }
+
+                //retrieves the vertices and ray weight of the triangle the ray intersects first 
+                if (ray.t < currentRay) {
+                    currentRay = ray.t;
+                    v_0 = v0;
+                    v_1 = v1;
+                    v_2 = v2;
                 }
             }
         }
         // Intersect with spheres.
         for (const auto& sphere : m_pScene->spheres)
             hit |= intersectRayWithShape(sphere, ray, hitInfo);
+
+        if (hit && enableDebugDraw) {
+            debugNormalInterpolation(v_0, v_1, v_2, ray, features);
+        } // only calls the visual debug in the case there is an intersection and debugging is enabled
+
         return hit;
     } else {
         // TODO: implement here the bounding volume hierarchy traversal.
@@ -93,4 +115,45 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
         return false;
     }
+}
+
+
+/*
+* 
+    Visual Debug Method for Normal Interpolation
+
+    This method is called in the BoundingVolumeHierarchy intersect method when there has been an intersection and for the vertices of the first triangle
+    the ray intersects. We take the same ray from that intersects the triangle to compute point at which it intersects the triangle. The variable "features
+    ?s used to see whether NormalInterpolation is enabled at all. 
+
+    Inside this method is called the drawNormal function from "draw.cpp"so that we have all the vertices drawn. Then the intersection point is computed along with the normal.
+    The latter is done with methods from "interpolate.cpp"
+
+*/
+void debugNormalInterpolation(const Vertex& v0, const Vertex& v1, const Vertex& v2, Ray& ray, const Features& features)
+{
+    if (!features.enableNormalInterp) {
+        return;
+    }
+    const glm::vec3 color = glm::vec3 { 0, 1, 0 };
+
+    drawNormal(v0, color);
+    drawNormal(v1, color);
+    drawNormal(v2, color);
+
+    const glm::vec3 intersectionPoint = ray.origin + ray.t * ray.direction;
+    const glm::vec3 interpolatedNormal = interpolateNormal(v0.normal, v1.normal, v2.normal, computeBarycentricCoord(v0.position, v1.position, v2.position, intersectionPoint));
+
+    Vertex v3 = Vertex();
+
+    v3.position = intersectionPoint;
+    v3.normal = interpolatedNormal;
+
+    drawNormal(v3, color);
+
+
+
+    
+
+
 }
