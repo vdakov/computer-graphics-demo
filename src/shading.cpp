@@ -38,7 +38,7 @@ const Ray computeReflectionRay (Ray ray, HitInfo hitInfo)
         .direction = reflectDir,
         .t=std::numeric_limits<float>::max() };
     #endif
-    #ifdef CSDEBUG
+    #ifdef CSDEBUG // TODO Disable!
     Ray reflectionRay { 
         .origin=intersectionPoint + reflectDir * powf(10, -5), 
         .direction=glm::reflect(ray.direction, hitInfo.normal), 
