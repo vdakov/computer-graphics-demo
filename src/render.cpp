@@ -3,10 +3,15 @@
 #include "light.h"
 #include "screen.h"
 #include <framework/trackball.h>
+#include <texture.cpp>
 #ifdef NDEBUG
 #include <omp.h>
 #endif
 
+
+/*
+    Method to return the final color for each pixel in the scene, whether for ray tracing or rasterizatioj
+*/
 glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth)
 {
     HitInfo hitInfo;
@@ -17,6 +22,23 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         if (features.enableRecursive) {
             Ray reflection = computeReflectionRay(ray, hitInfo);
             // TODO: put your own implementation of recursive ray tracing here.
+        }
+
+
+
+        /*
+        * 
+            Method to acquire each texel. When rendering in Ray Tracing, the getFinalColor method computes the color of the current pixel.
+            Here, if texture mapping is enabled, this if-statement checks whether the current traced object is a textured object or not.
+            Since only the cube is textured,this is only applied to it. Then the method acquireTexel() is called, which takes the pointer towards
+            the image loaded into the texture and the current pixel's texture coordinate. Then it computes for which pixel that texture coordinate corresponds
+            and returns the corresponding color.
+
+        */
+        if (features.enableTextureMapping) {
+            if (hitInfo.material.kdTexture) {
+                return acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
+            }
         }
 
         // Draw a white debug ray if the ray hits.
@@ -32,6 +54,11 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
     }
 }
 
+
+
+/*
+    Method that draws a ray for each point in the scene and calls the getFinalColor() method in each instance of it. 
+*/
 void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInterface& bvh, Screen& screen, const Features& features)
 {
     glm::ivec2 windowResolution = screen.resolution();
