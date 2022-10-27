@@ -27,29 +27,36 @@ void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm:
     // TODO: implement this function.
 }
 
-// test the visibility at a given light sample
-// returns 1.0 if sample is visible, 0.0 otherwise
+/*
+    Method to compute the hard shadows. Tests if the vector from a point to the light intersects anything in its path.
+    If so, returns 0.0, otherwise returns 1.0.
+*/
 float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& debugColor, const BvhInterface& bvh, const Features& features, Ray ray, HitInfo hitInfo)
 {
-    
+    if (features.enableHardShadow) {
+        glm::vec3 p = ray.origin + ray.direction * ray.t;
+        glm::vec3 dir = glm::normalize(samplePos - p);
+        float t = (samplePos - p).x / dir.x;
 
-    glm::vec3 p = ray.origin + ray.direction * ray.t;
-    glm::vec3 dir = glm::normalize(samplePos - p);
-    float t = (samplePos - p).x / dir.x;
+        Ray r {
+            .origin = p + dir * 0.00001F,
+            .direction = dir,
+            .t = t
+        };
 
-    Ray r;
-    r.t = t;
-    r.origin = p + dir * FLT_EPSILON;
-    r.direction = dir;
-    if (glm::dot(hitInfo.normal, r.direction * r.t + r.origin) < 0) {
-        return 0.0;
-    }
+        if (glm::dot(hitInfo.normal, r.direction * r.t + r.origin) < 0) {
+            drawRay(r, debugColor); // Visual debug
+            return 0.0;
+        }
 
-    if (bvh.intersect(r, hitInfo, features)) {
-        drawRay(r, debugColor); //Visual debug
-        return 0.0;
+        if (bvh.intersect(r, hitInfo, features)) {
+            drawRay(r, debugColor); // Visual debug
+            return 0.0;
+        } else {
+            drawRay(r, glm::vec3 { 1 }); // Visual debug
+            return 1.0;
+        }
     } else {
-        drawRay(r, glm::vec3 { 1 }); //Visual debug 
         return 1.0;
     }
 }
