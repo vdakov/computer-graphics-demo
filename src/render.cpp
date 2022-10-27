@@ -36,6 +36,17 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
         */
         if (features.enableTextureMapping) {
+
+            /*
+                Calls the bilinear interpolation texel sampling in case it is enabled
+            */
+            if (hitInfo.material.kdTexture && features.extra.enableBilinearTextureFiltering) {
+                return acquireTexelBilinear(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
+            }
+
+            /*
+               Calls the texture with normal interpolation sampling
+            */
             if (hitInfo.material.kdTexture) {
                 return acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
             }
