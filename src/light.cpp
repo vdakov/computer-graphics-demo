@@ -38,16 +38,16 @@ float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& deb
         glm::vec3 dir = glm::normalize(samplePos - p);
         float t = (samplePos - p).x / dir.x;
 
+        if (glm::dot(hitInfo.normal, ray.direction) > 0) {
+            drawRay(Ray {p,dir,t}, debugColor); // Visual debug
+            return 0.0;
+        }
+
         Ray r {
-            .origin = p + dir * 0.00001F,
+            .origin = p + dir * 0.000001F,
             .direction = dir,
             .t = t
         };
-
-        if (glm::dot(hitInfo.normal, r.direction * r.t + r.origin) < 0) {
-            drawRay(r, debugColor); // Visual debug
-            return 0.0;
-        }
 
         if (bvh.intersect(r, hitInfo, features)) {
             drawRay(r, debugColor); // Visual debug
@@ -103,8 +103,8 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
             if (std::holds_alternative<PointLight>(light)) {
                 const PointLight pointLight = std::get<PointLight>(light);
                 glm::vec3 contribution { computeShading(pointLight.position, pointLight.color, features, ray, hitInfo) };
+                contribution *= testVisibilityLightSample(pointLight.position, glm::vec3 { 0 }, bvh, features, ray, hitInfo);
                 contributions += contribution;
-                
                 // Perform your calculations for a point light.
             } else if (std::holds_alternative<SegmentLight>(light)) {
                 const SegmentLight segmentLight = std::get<SegmentLight>(light);
