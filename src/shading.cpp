@@ -3,7 +3,7 @@
 #include <glm/geometric.hpp>
 #include <shading.h>
 
-// #define CSDEBUG
+#define CSDEBUG
 
 const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& lightColor, const Features& features, Ray ray, HitInfo hitInfo)
 {
@@ -13,7 +13,7 @@ const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& 
     if (features.enableShading) {
         glm::vec3 intersectionPoint { ray.origin + ray.direction * ray.t };
         glm::vec3 dir { glm::normalize(lightPosition - intersectionPoint) };
-        Ray L { .origin = intersectionPoint +  dir * powf(10, -5),
+        Ray L { .origin = lightPosition,
             .direction = dir,
             .t = glm::length(lightPosition - intersectionPoint) };
 
@@ -31,18 +31,18 @@ const Ray computeReflectionRay (Ray ray, HitInfo hitInfo)
 {
 
     // Do NOT use glm::reflect!! write your own code.
-    glm::vec3 intersectionPoint { ray.origin };
+    glm::vec3 intersectionPoint { ray.origin + ray.direction * ray.t };
     glm::vec3 reflectDir { glm::normalize(ray.direction - 2.0f * hitInfo.normal * glm::dot(ray.direction, hitInfo.normal)) };
     #ifndef CSDEBUG
     Ray reflectionRay { .origin = intersectionPoint + reflectDir * powf(10, -5),
         .direction = reflectDir,
-        .t=FLT_MAX };
+        .t=std::numeric_limits<float>::max() };
     #endif
     #ifdef CSDEBUG
     Ray reflectionRay { 
         .origin=intersectionPoint + reflectDir * powf(10, -5), 
-        .direction=glm::reflect(-ray.direction, hitInfo.normal), 
-        .t=ray.t 
+        .direction=glm::reflect(ray.direction, hitInfo.normal), 
+        .t=std::numeric_limits<float>::max() 
     };
     #endif
     // TODO: implement the reflection ray computation.
