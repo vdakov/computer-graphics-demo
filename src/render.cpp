@@ -13,7 +13,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
     if (bvh.intersect(ray, hitInfo, features)) {
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
-        drawRay(ray, glm::vec3(1.0f, 1.0f, 1.0f));
+        drawRay(ray, Lo);
 
         if (features.enableRecursive) {
             if (hitInfo.material.ks != glm::vec3(0.0f, 0.0f, 0.0f)) {
