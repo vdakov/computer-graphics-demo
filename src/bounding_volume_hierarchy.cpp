@@ -87,7 +87,9 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 const auto v2 = mesh.vertices[tri[2]];
                 if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
                     hitInfo.material = mesh.material;
-                    
+                    const glm::vec3 intersectionPoint = ray.origin + ray.t * ray.direction; 
+                     hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, intersectionPoint);
+                     hitInfo.normal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
                     /*
                     * IF TEXTURE MAPPING IS ENABLED:
                     * 
@@ -97,15 +99,12 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                     */
                     if (features.enableTextureMapping) {
 
-                        const glm::vec3 intersectionPoint = ray.origin + ray.t * ray.direction; 
-                        hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, intersectionPoint);
-                        hitInfo.normal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
+  
                         hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
 
                     }
                     hit = true;
                 }
-
 
                 //retrieves the vertices and ray weight of the triangle the ray intersects first 
                 if (ray.t < currentRay) {
@@ -113,7 +112,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                         v_0 = v0;
                         v_1 = v1;
                         v_2 = v2;
-                    }
+                }
 
                 
             }
