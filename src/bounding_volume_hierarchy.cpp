@@ -10,24 +10,106 @@
 
 void debugNormalInterpolation(const Vertex& v0, const Vertex& v1, const Vertex& v2, Ray& ray, const Features& features);
 
+std::vector<Node> nodes;
+
+void recursiveNodes(Scene* scene, std::vector<centerTri>& centroids, std::vector<Node>& nodes, int axis)
+{
+
+    glm::vec3 upper { FLT_MIN };
+    glm::vec3 lower { FLT_MAX };
+    for (centerTri tri : centroids) {
+        auto v0 = scene->meshes.at(tri.mesh).vertices.at(scene->meshes.at(tri.mesh).triangles.at(tri.triangle)[0]).position;
+        auto v1 = scene->meshes.at(tri.mesh).vertices.at(scene->meshes.at(tri.mesh).triangles.at(tri.triangle)[1]).position;
+        auto v2 = scene->meshes.at(tri.mesh).vertices.at(scene->meshes.at(tri.mesh).triangles.at(tri.triangle)[2]).position;
+        upper.x = std::max({ upper.x, v0.x, v1.x, v2.x });
+        upper.y = std::max({ upper.y, v0.y, v1.y, v2.y });
+        upper.z = std::max({ upper.z, v0.z, v1.z, v2.z });
+        lower.x = std::min({ lower.x, v0.x, v1.x, v2.x });
+        lower.y = std::min({ lower.y, v0.y, v1.y, v2.y });
+        lower.z = std::min({ lower.z, v0.z, v1.z, v2.z });
+    }
+
+    if (centroids.size() == 1) {
+        nodes.push_back(
+            Node { .isLeaf = true,
+                .lower = lower,
+                .upper = upper,
+                .indices = std::vector { centroids.at(0).mesh, centroids.at(0).triangle } });
+        return;
+    }
+
+    std::sort(centroids.begin(), centroids.end(),
+        [axis](const centerTri& x, const centerTri& y) -> bool { return x.centroid[axis] < y.centroid[axis]; });
+    int median = centroids.size() / 2 + centroids.size() % 2;
+    std::vector<centerTri> left(centroids.begin(), centroids.begin() + median);
+    std::vector<centerTri> right(centroids.begin() + median, centroids.end());
+
+    if (axis == 2) {
+        axis = 0;
+    } else {
+        ++axis;
+    }
+    recursiveNodes(scene, left, nodes, axis);
+    long idx1 = nodes.size()-1;
+    recursiveNodes(scene, right, nodes, axis);
+    long idx2 = nodes.size()-1;
+
+    nodes.push_back(
+        Node {
+            .isLeaf = false,
+            .lower = lower,
+            .upper = upper,
+            .indices = std::vector { idx1, idx2 } });
+}
+
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
 {
     // TODO: implement BVH construction.
+    nodes.clear();
+    std::vector<centerTri> centroids;
+    for (int i = 0; i < pScene->meshes.size(); i++) {
+        for (int j = 0; j < pScene->meshes.at(i).triangles.size(); j++) {
+            glm::vec3 v0 = pScene->meshes.at(i).vertices[pScene->meshes.at(i).triangles[j][0]].position;
+            glm::vec3 v1 = pScene->meshes.at(i).vertices[pScene->meshes.at(i).triangles[j][1]].position;
+            glm::vec3 v2 = pScene->meshes.at(i).vertices[pScene->meshes.at(i).triangles[j][2]].position;
+            centroids.push_back(
+                centerTri {
+                    .mesh = i,
+                    .triangle = j,
+                    .centroid = v0 + (v1 - v0) / 2.0f + (v2 - v0) / 2.0f 
+                });
+        }
+    }
+    recursiveNodes(pScene, centroids, nodes, 0);
+}
+
+int numLevelsHelper(int idx) {
+    if (nodes.at(idx).isLeaf) {
+        return 1;
+    } else {
+        return 1 + std::max({ numLevelsHelper(nodes.at(idx).indices.at(0)), numLevelsHelper(nodes.at(idx).indices.at(1)) });
+    }
 }
 
 // Return the depth of the tree that you constructed. This is used to tell the
 // slider in the UI how many steps it should display for Visual Debug 1.
 int BoundingVolumeHierarchy::numLevels() const
 {
-    return 1;
+    return numLevelsHelper(nodes.size()-1);
 }
 
 // Return the number of leaf nodes in the tree that you constructed. This is used to tell the
 // slider in the UI how many steps it should display for Visual Debug 2.
 int BoundingVolumeHierarchy::numLeaves() const
 {
-    return 1;
+    int count = 0;
+    for (Node n : nodes) {
+        if (n.isLeaf) {
+            ++count;
+        }
+    }
+    return count;
 }
 
 // Use this function to visualize your BVH. This is useful for debugging. Use the functions in
@@ -38,11 +120,50 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
     // Draw the AABB as a transparent green box.
     //AxisAlignedBox aabb{ glm::vec3(-0.05f), glm::vec3(0.05f, 1.05f, 1.05f) };
     //drawShape(aabb, DrawMode::Filled, glm::vec3(0.0f, 1.0f, 0.0f), 0.2f);
-
+    std::vector<Node> nodes1 { nodes.at(nodes.size()-1) };
+    std::vector<Node> nodes2;
+    Node temp;
+    for (int i = 0; i < level; i++) {
+        if (i % 2 == 0) {
+            while (!nodes1.empty()) {
+                temp = nodes1.at(nodes1.size()-1);
+                if (temp.isLeaf) {
+                    nodes2.push_back(temp);
+                } else {
+                    nodes2.push_back(nodes.at(temp.indices.at(0)));
+                    nodes2.push_back(nodes.at(temp.indices.at(1)));
+                }
+                nodes1.pop_back();
+            }
+        }
+        else {
+            while (!nodes2.empty()) {
+                temp = nodes2.at(nodes2.size() - 1);
+                if (temp.isLeaf) {
+                    nodes1.push_back(temp);
+                } else {
+                    nodes1.push_back(nodes.at(temp.indices.at(0)));
+                    nodes1.push_back(nodes.at(temp.indices.at(1)));
+                }
+                nodes2.pop_back();
+            }
+        }
+    }
+    if (level % 2 == 0) {
+        for (Node n : nodes1) {
+            AxisAlignedBox aabb { n.lower, n.upper };
+            drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
+        }
+    } else {
+        for (Node n : nodes2) {
+            AxisAlignedBox aabb { n.lower, n.upper };
+            drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
+        }
+    }
     // Draw the AABB as a (white) wireframe box.
-    AxisAlignedBox aabb { glm::vec3(0.0f), glm::vec3(0.0f, 1.05f, 1.05f) };
+    //AxisAlignedBox aabb { nodes.at(nodes.size() - 1).lower, nodes.at(nodes.size()-1).upper };
     //drawAABB(aabb, DrawMode::Wireframe);
-    drawAABB(aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
+    //drawAABB(aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
 }
 
 
@@ -55,11 +176,47 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     // Draw the AABB as a transparent green box.
     //AxisAlignedBox aabb{ glm::vec3(-0.05f), glm::vec3(0.05f, 1.05f, 1.05f) };
     //drawShape(aabb, DrawMode::Filled, glm::vec3(0.0f, 1.0f, 0.0f), 0.2f);
-
+    std::vector<Node> leafTree;
+    int index;
+    if (leafIdx == 0) {
+        leafIdx++;
+    }
+    for (int i = 0; i < nodes.size(); i++) {
+        if (nodes.at(i).isLeaf) {
+            --leafIdx;
+            if (leafIdx == 0) {
+                index = i;
+                break;
+            }
+        }
+    }
+    leafTree.push_back(nodes.at(index));
+    while (index != -1) {
+        for (int j = 0; j < nodes.size(); j++) {
+            if (!nodes.at(j).isLeaf && std::find(nodes.at(j).indices.begin(), nodes.at(j).indices.end(), index) != nodes.at(j).indices.end()) {
+                index = j;
+                leafTree.push_back(nodes.at(j));
+                break;
+            } else if (j == nodes.size() - 1) {
+                index = -1;
+            }
+        }
+    }
+    
+    for (Node n : leafTree) {
+        if (n.isLeaf) {
+            Mesh mesh = m_pScene->meshes.at(n.indices.at(0));
+            glm::vec3 idx = mesh.triangles.at(n.indices.at(1));
+            drawTriangle(mesh.vertices.at(idx[0]), mesh.vertices.at(idx[1]), mesh.vertices.at(idx[2]));
+        } else {
+            AxisAlignedBox aabb { n.lower, n.upper };
+            drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
+        }
+    }
     // Draw the AABB as a (white) wireframe box.
-    AxisAlignedBox aabb { glm::vec3(0.0f), glm::vec3(0.0f, 1.05f, 1.05f) };
+    //AxisAlignedBox aabb { glm::vec3(0.0f), glm::vec3(0.0f, 1.05f, 1.05f) };
     //drawAABB(aabb, DrawMode::Wireframe);
-    drawAABB(aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
+    //drawAABB(aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
 
     // once you find the leaf node, you can use the function drawTriangle (from draw.h) to draw the contained primitives
 }
