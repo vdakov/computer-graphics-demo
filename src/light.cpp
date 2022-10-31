@@ -7,14 +7,43 @@ DISABLE_WARNINGS_PUSH()
 DISABLE_WARNINGS_POP()
 #include <cmath>
 #include <iostream>
+#include <random>
+
+
+
 
 
 // samples a segment light source
 // you should fill in the vectors position and color with the sampled position and color
 void sampleSegmentLight(const SegmentLight& segmentLight, glm::vec3& position, glm::vec3& color)
 {
-    position = glm::vec3(0.0);
-    color = glm::vec3(0.0);
+
+    std::random_device random;
+    std::mt19937 mtGen(random());
+
+    std::uniform_real_distribution<> uniform(0.0, 1.0);
+    float randomNum = uniform(mtGen);
+
+    glm::vec3 p0 = segmentLight.endpoint0;
+    glm::vec3 p1 = segmentLight.endpoint1;
+    glm::vec3 c0 = segmentLight.color0;
+    glm::vec3 c1 = segmentLight.color1;
+
+    glm::vec3 line = p1 - p0;
+
+   
+    glm::vec3 pointOnLine = p0 + randomNum * line; //generates random point on the line
+    float alpha = glm::distance(p0, pointOnLine) / glm::length(line);
+    glm::vec3 colorAtPoint = alpha*c0 + (1 - alpha) * c1;
+
+       
+    
+
+
+
+
+    position = pointOnLine;
+    color = colorAtPoint;
     // TODO: implement this function.
 }
 
@@ -24,6 +53,8 @@ void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm:
 {
     position = glm::vec3(0.0);
     color = glm::vec3(0.0);
+
+    
     // TODO: implement this function.
 }
 
@@ -108,11 +139,31 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                 contribution *= testVisibilityLightSample(pointLight.position, glm::vec3 { 0 }, bvh, features, ray, hitInfo);
                 contributions += contribution;
                 // Perform your calculations for a point light.
-            } else if (std::holds_alternative<SegmentLight>(light)) {
+            } else if (std::holds_alternative<SegmentLight>(light) && features.enableSoftShadow) {
                 const SegmentLight segmentLight = std::get<SegmentLight>(light);
+
+                float n = 10.0;
+                float hits=0;
+                glm::vec3 total {0};
+                for (int i = 0; i < 10; i++) {
+                    glm::vec3 p;
+                    glm::vec3 c;
+                    sampleSegmentLight(segmentLight, p, c);
+                    if (testVisibilityLightSample(p, c, bvh, features, ray, hitInfo)==1) {
+                        hits++;
+                        total += computeShading(p, c, features, ray, hitInfo);
+                    }
+                    
+                }
+                
+            
+                contributions += total/n;
+
+     
                 // Perform your calculations for a segment light.
-            } else if (std::holds_alternative<ParallelogramLight>(light)) {
+            } else if (std::holds_alternative<ParallelogramLight>(light) && features.enableSoftShadow) {
                 const ParallelogramLight parallelogramLight = std::get<ParallelogramLight>(light);
+           
                 // Perform your calculations for a parallelogram light.
             }
         }
