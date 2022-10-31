@@ -45,5 +45,6 @@ struct Node {
 struct centerTri {
     long mesh;
     long triangle;
+    std::vector<glm::vec3> vertices;
     glm::vec3 centroid;
 };

@@ -12,29 +12,36 @@ void debugNormalInterpolation(const Vertex& v0, const Vertex& v1, const Vertex& 
 
 std::vector<Node> nodes;
 
-void recursiveNodes(Scene* scene, std::vector<centerTri>& centroids, std::vector<Node>& nodes, int axis)
+void recursiveNodes(Scene* scene, std::vector<centerTri>& centroids, std::vector<Node>& nodes, int axis, int maxLevel)
 {
 
-    glm::vec3 upper { FLT_MIN };
+    glm::vec3 upper { -FLT_MAX };
     glm::vec3 lower { FLT_MAX };
+    Mesh mesh;
     for (centerTri tri : centroids) {
-        auto v0 = scene->meshes.at(tri.mesh).vertices.at(scene->meshes.at(tri.mesh).triangles.at(tri.triangle)[0]).position;
-        auto v1 = scene->meshes.at(tri.mesh).vertices.at(scene->meshes.at(tri.mesh).triangles.at(tri.triangle)[1]).position;
-        auto v2 = scene->meshes.at(tri.mesh).vertices.at(scene->meshes.at(tri.mesh).triangles.at(tri.triangle)[2]).position;
-        upper.x = std::max({ upper.x, v0.x, v1.x, v2.x });
-        upper.y = std::max({ upper.y, v0.y, v1.y, v2.y });
-        upper.z = std::max({ upper.z, v0.z, v1.z, v2.z });
-        lower.x = std::min({ lower.x, v0.x, v1.x, v2.x });
-        lower.y = std::min({ lower.y, v0.y, v1.y, v2.y });
-        lower.z = std::min({ lower.z, v0.z, v1.z, v2.z });
+        /*mesh = scene->meshes.at(tri.mesh);
+        auto v0 = mesh.vertices.at(mesh.triangles.at(tri.triangle)[0]).position;
+        auto v1 = mesh.vertices.at(mesh.triangles.at(tri.triangle)[1]).position;
+        auto v2 = mesh.vertices.at(mesh.triangles.at(tri.triangle)[2]).position;*/
+        upper.x = std::max({ upper.x, tri.vertices[0].x, tri.vertices[1].x, tri.vertices[2].x });
+        upper.y = std::max({ upper.y, tri.vertices[0].y, tri.vertices[1].y, tri.vertices[2].y });
+        upper.z = std::max({ upper.z, tri.vertices[0].z, tri.vertices[1].z, tri.vertices[2].z });
+        lower.x = std::min({ lower.x, tri.vertices[0].x, tri.vertices[1].x, tri.vertices[2].x });
+        lower.y = std::min({ lower.y, tri.vertices[0].y, tri.vertices[1].y, tri.vertices[2].y });
+        lower.z = std::min({ lower.z, tri.vertices[0].z, tri.vertices[1].z, tri.vertices[2].z });
     }
 
-    if (centroids.size() == 1) {
+    if (maxLevel == 0 || centroids.size() == 1) {
+        std::vector<long> idx;
+        for (centerTri tri : centroids) { 
+            idx.push_back(tri.mesh);
+            idx.push_back(tri.triangle);
+        }
         nodes.push_back(
             Node { .isLeaf = true,
                 .lower = lower,
                 .upper = upper,
-                .indices = std::vector { centroids.at(0).mesh, centroids.at(0).triangle } });
+                .indices = idx });
         return;
     }
 
@@ -49,9 +56,9 @@ void recursiveNodes(Scene* scene, std::vector<centerTri>& centroids, std::vector
     } else {
         ++axis;
     }
-    recursiveNodes(scene, left, nodes, axis);
+    recursiveNodes(scene, left, nodes, axis, (maxLevel-1));
     long idx1 = nodes.size()-1;
-    recursiveNodes(scene, right, nodes, axis);
+    recursiveNodes(scene, right, nodes, axis, (maxLevel-1));
     long idx2 = nodes.size()-1;
 
     nodes.push_back(
@@ -77,11 +84,12 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
                 centerTri {
                     .mesh = i,
                     .triangle = j,
+                    .vertices = { v0, v1, v2 },
                     .centroid = v0 + (v1 - v0) / 2.0f + (v2 - v0) / 2.0f 
                 });
         }
     }
-    recursiveNodes(pScene, centroids, nodes, 0);
+    recursiveNodes(pScene, centroids, nodes, 0, 3);
 }
 
 int numLevelsHelper(int idx) {
@@ -117,6 +125,7 @@ int BoundingVolumeHierarchy::numLeaves() const
 // mode, arbitrary colors and transparency.
 void BoundingVolumeHierarchy::debugDrawLevel(int level)
 {
+    m_numLevels = numLevels();
     // Draw the AABB as a transparent green box.
     //AxisAlignedBox aabb{ glm::vec3(-0.05f), glm::vec3(0.05f, 1.05f, 1.05f) };
     //drawShape(aabb, DrawMode::Filled, glm::vec3(0.0f, 1.0f, 0.0f), 0.2f);
@@ -173,13 +182,17 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
 // i-th leaf node in the vector.
 void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
 {
+    m_numLeaves = numLeaves();
     // Draw the AABB as a transparent green box.
     //AxisAlignedBox aabb{ glm::vec3(-0.05f), glm::vec3(0.05f, 1.05f, 1.05f) };
     //drawShape(aabb, DrawMode::Filled, glm::vec3(0.0f, 1.0f, 0.0f), 0.2f);
+    if (leafIdx > m_numLeaves) {
+        leafIdx = 0;
+    }
     std::vector<Node> leafTree;
-    int index;
+    int index {};
     if (leafIdx == 0) {
-        leafIdx++;
+        ++leafIdx;
     }
     for (int i = 0; i < nodes.size(); i++) {
         if (nodes.at(i).isLeaf) {
@@ -190,29 +203,24 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
             }
         }
     }
-    leafTree.push_back(nodes.at(index));
-    while (index != -1) {
-        for (int j = 0; j < nodes.size(); j++) {
-            if (!nodes.at(j).isLeaf && std::find(nodes.at(j).indices.begin(), nodes.at(j).indices.end(), index) != nodes.at(j).indices.end()) {
-                index = j;
-                leafTree.push_back(nodes.at(j));
-                break;
-            } else if (j == nodes.size() - 1) {
-                index = -1;
-            }
-        }
+
+    std::vector<glm::vec3> colors = { glm::vec3 { 1.0f, 0.0f, 1.0f }, glm::vec3 { 0.5f, 0.0f, 0.5f }, glm::vec3 {0.87f, 0.0f, 1.0f},
+        glm::vec3 { 1.0f, 0.46f, 1.0f } };
+
+    std::vector<long> indices = nodes.at(index).indices;
+    Mesh mesh;
+    glm::vec3 triangle;
+    for (int i = 0; i < indices.size(); i += 2) {
+        mesh = m_pScene->meshes.at(indices.at(i));
+        triangle = mesh.triangles.at(indices.at(i + 1));
+        glColor3f(colors.at(i % colors.size())[0], colors.at(i % colors.size())[1], colors.at(i % colors.size())[2]);
+        drawTriangle(mesh.vertices.at(triangle[0]), mesh.vertices.at(triangle[1]), mesh.vertices.at(triangle[2]));
     }
     
-    for (Node n : leafTree) {
-        if (n.isLeaf) {
-            Mesh mesh = m_pScene->meshes.at(n.indices.at(0));
-            glm::vec3 idx = mesh.triangles.at(n.indices.at(1));
-            drawTriangle(mesh.vertices.at(idx[0]), mesh.vertices.at(idx[1]), mesh.vertices.at(idx[2]));
-        } else {
-            AxisAlignedBox aabb { n.lower, n.upper };
-            drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
-        }
-    }
+    AxisAlignedBox aabb { nodes.at(index).lower, nodes.at(index).upper };
+    drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
+
+    
     // Draw the AABB as a (white) wireframe box.
     //AxisAlignedBox aabb { glm::vec3(0.0f), glm::vec3(0.0f, 1.05f, 1.05f) };
     //drawAABB(aabb, DrawMode::Wireframe);
