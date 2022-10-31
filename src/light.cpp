@@ -72,7 +72,9 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
     if (features.enableShading) {
         // If shading is enabled, compute the contribution from all lights.
         glm::vec3 contributions {0.0f, 0.0f, 0.0f};
+
         for (const auto& light : scene.lights) {
+
             if (std::holds_alternative<PointLight>(light)) {
                 const PointLight pointLight = std::get<PointLight>(light);
                 glm::vec3 contribution { computeShading(pointLight.position, pointLight.color, features, ray, hitInfo) };

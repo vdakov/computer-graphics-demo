@@ -154,6 +154,8 @@ int main(int argc, char** argv)
             }
             ImGui::Separator();
 
+      
+
             if (ImGui::TreeNode("Camera(read only)")) {
                 auto lookAt = camera.lookAt();
                 auto position = camera.position();
