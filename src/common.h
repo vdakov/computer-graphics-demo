@@ -65,8 +65,8 @@ struct ExtraFeatures {
 };
 
 struct Features {
-    bool enableShading = false;
-    bool enableRecursive = false;
+    bool enableShading = true;
+    bool enableRecursive = true;
     bool enableHardShadow = false;
     bool enableSoftShadow = false;
     bool enableNormalInterp = false;
