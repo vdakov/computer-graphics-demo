@@ -20,7 +20,7 @@
 glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Features& features)
 {
     if (!features.enableTextureMapping) {
-        return image.pixels[1-1];
+        return image.pixels[0];
     }
 
     // TODO: implement this function.
@@ -29,13 +29,45 @@ glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Feat
     // you can convert from position (i,j) to an index using the method seen in the lecture
     // Note, the center of the first pixel is at image coordinates (0.5, 0.5)
 
-   float width = ceil(image.width * texCoord.x);
-   float height = ceil(image.height * texCoord.y);
+    
+
+    //implemented wrapping mode if texture coordinate is >1
+   float width = fmod(ceil(image.width * (texCoord.x)),image.width);
+   float height = fmod(ceil(image.height * (texCoord.y)),image.height);
+
 
    int index = height* image.width - width;
    int newIndex = image.height * image.width - index - 1; // reversed the image
 
     return image.pixels[newIndex];
+}
+
+
+void calculateIndex(float& hLow, float& hHigh, float& wLow, float& wHigh, float x, float y, float width, float height)
+{
+
+    float lowH = hLow;
+    float lowW = wLow;
+    float highH = hHigh;
+    float highW = wHigh;
+
+
+    if (x - highW > 0.5f && lowW==0) {
+        wHigh = lowW;
+    }
+    if (lowW-x > 0.5f && highW==width) {
+        wLow = highW;
+    }
+
+    if (y - highH > 0.5f && lowH==0) {
+        hHigh = lowH;
+    }
+
+    if (lowH - y > 0.5f && highH==height) {
+        hLow = highH;
+    }
+
+
 }
 
 
@@ -57,16 +89,27 @@ glm::vec3 acquireTexelBilinear(const Image& image, const glm::vec2& texCoord, co
     }
 
 
-    float width = image.width * texCoord.x + 0.5f;
-    float height = image.height * texCoord.y + 0.5f;
+    float width = fmod(image.width * texCoord.x + 0.5f,image.width);
+    float height = fmod(image.height * texCoord.y + 0.5f,image.height);
 
 
     //coordinates of square around point
+
+    float hLow = floor(height);
+    float hHigh = ceil(height);
+    float wLow = floor(width);
+    float wHigh = ceil(width);
+
+    calculateIndex(hLow, hHigh, wLow, wHigh, width, height, image.width, image.height);
    
-    int A = image.height * image.width - floor(height) * image.width + floor(width)-1;
-    int B = image.height * image.width - floor(height) * image.width + ceil(width) -1 ;
-    int C = image.height * image.width- ceil(height) * image.width + floor(width)-1;
-    int D = image.height * image.width- ceil(height) * image.width + ceil(width)-1;
+    int A = image.height * image.width - hLow * image.width + wLow-1;
+    int B = image.height * image.width - hLow * image.width + wHigh - 1;
+    int C = image.height * image.width - hHigh * image.width + wLow - 1;
+    int D = image.height * image.width - hHigh * image.width + wHigh - 1;
+
+
+
+    
 
     //colors of each of the four surrounding pixels 
     glm::vec3 cA = image.pixels[A];
@@ -82,9 +125,10 @@ glm::vec3 acquireTexelBilinear(const Image& image, const glm::vec2& texCoord, co
     float wD = (width - floor(width)) * (height - floor(height));
     
 
-
     return wA * cA + wB * cB + wC * cC + wD * cD;
 }
+
+
 
 
 

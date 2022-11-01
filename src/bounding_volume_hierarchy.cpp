@@ -88,11 +88,10 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
                     hitInfo.material = mesh.material;
                     hitInfo.normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
-
+                    const glm::vec3 intersectionPoint = ray.origin + ray.t * ray.direction;
+                    hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, intersectionPoint);
 
                     if (features.enableNormalInterp) {
-                        const glm::vec3 intersectionPoint = ray.origin + ray.t * ray.direction;
-                        hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, intersectionPoint);
                         hitInfo.normal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
                     }
 
@@ -103,7 +102,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                     * it makes all the computations necessary for textures through the methods in "interpolate.cpp". 
                     * 
                     */
-                    if (features.enableTextureMapping ) {
+                    if (features.enableTextureMapping ){
                         hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
 
                     }
