@@ -20,7 +20,7 @@
 glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Features& features)
 {
     if (!features.enableTextureMapping) {
-        return image.pixels[0];
+        return image.pixels[1-1];
     }
 
     // TODO: implement this function.
@@ -29,10 +29,62 @@ glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Feat
     // you can convert from position (i,j) to an index using the method seen in the lecture
     // Note, the center of the first pixel is at image coordinates (0.5, 0.5)
 
-   float width = image.width * texCoord.x;
-   float height = image.height * texCoord.y;
+   float width = ceil(image.width * texCoord.x);
+   float height = ceil(image.height * texCoord.y);
 
-   int index = floor(height) * image.width + floor(width);
+   int index = height* image.width - width;
+   int newIndex = image.height * image.width - index - 1; // reversed the image
 
-    return image.pixels[index];
+    return image.pixels[newIndex];
 }
+
+
+/*
+    Bilinear Interpolation Computation of the Colors of a Texel
+
+    The method works by taking the texel coordinate and computing the four texel nearest to it. That way
+    it creates a square of the four pixels. From there the colors of the four pixels are all computed and
+    the distances to each of the sides is turned into a weight. The closer to a pixel the texCoord is, the higher its weight.
+
+    The index is computed in the same way as in the acquireTexel() method
+
+
+*/
+glm::vec3 acquireTexelBilinear(const Image& image, const glm::vec2& texCoord, const Features& features)
+{
+    if (!features.enableTextureMapping || !features.extra.enableBilinearTextureFiltering) {
+        return image.pixels[0];
+    }
+
+
+    float width = image.width * texCoord.x + 0.5f;
+    float height = image.height * texCoord.y + 0.5f;
+
+
+    //coordinates of square around point
+   
+    int A = image.height * image.width - floor(height) * image.width + floor(width)-1;
+    int B = image.height * image.width - floor(height) * image.width + ceil(width) -1 ;
+    int C = image.height * image.width- ceil(height) * image.width + floor(width)-1;
+    int D = image.height * image.width- ceil(height) * image.width + ceil(width)-1;
+
+    //colors of each of the four surrounding pixels 
+    glm::vec3 cA = image.pixels[A];
+    glm::vec3 cB = image.pixels[B];
+    glm::vec3 cC = image.pixels[C];
+    glm::vec3 cD = image.pixels[D];
+
+   
+  
+    float wA = (ceil(width) - width) * (ceil(height) - height);
+    float wB = (width - floor(width)) * (ceil(height) - height);
+    float wC = (ceil(width) - width) * (height - floor(height));
+    float wD = (width - floor(width)) * (height - floor(height));
+    
+
+
+    return wA * cA + wB * cB + wC * cC + wD * cD;
+}
+
+
+

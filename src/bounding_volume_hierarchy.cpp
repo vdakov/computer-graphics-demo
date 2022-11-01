@@ -110,14 +110,13 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                     hit = true;
                 }
 
-
                 //retrieves the vertices and ray weight of the triangle the ray intersects first 
                 if (ray.t < currentRay) {
                         currentRay = ray.t;
                         v_0 = v0;
                         v_1 = v1;
                         v_2 = v2;
-                    }
+                }
 
                 
             }
