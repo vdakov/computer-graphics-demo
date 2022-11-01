@@ -73,6 +73,8 @@ struct Features {
     bool enableTextureMapping = false;
     bool enableAccelStructure = false;
 
+    int samples = 10;
+
     ExtraFeatures extra = {};
 };
 

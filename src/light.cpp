@@ -34,12 +34,7 @@ void sampleSegmentLight(const SegmentLight& segmentLight, glm::vec3& position, g
    
     glm::vec3 pointOnLine = p0 + randomNum * line; //generates random point on the line
     float alpha = glm::distance(p0, pointOnLine) / glm::length(line);
-    glm::vec3 colorAtPoint = alpha*c0 + (1 - alpha) * c1;
-
-       
-    
-
-
+    glm::vec3 colorAtPoint = randomNum*c1 + (1 - randomNum) * c0;
 
 
     position = pointOnLine;
@@ -51,11 +46,38 @@ void sampleSegmentLight(const SegmentLight& segmentLight, glm::vec3& position, g
 // you should fill in the vectors position and color with the sampled position and color
 void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm::vec3& position, glm::vec3& color)
 {
-    position = glm::vec3(0.0);
-    color = glm::vec3(0.0);
+    std::random_device random;
+    std::mt19937 mtGen(random());
 
-    
-    // TODO: implement this function.
+    std::uniform_real_distribution<> uniform(0.0, 1.0);
+    float randomNum1 = uniform(mtGen);
+    float randomNum2 = uniform(mtGen);
+
+
+    glm::vec3 origin = parallelogramLight.v0;
+    glm::vec3 e1 = parallelogramLight.edge01;
+    glm::vec3 e2 = parallelogramLight.edge02;
+    glm::vec3 c0 = parallelogramLight.color0;
+    glm::vec3 c1 = parallelogramLight.color1;
+    glm::vec3 c2 = parallelogramLight.color2;
+    glm::vec3 c3 = parallelogramLight.color3;
+
+ 
+
+    float areaTotal = glm::length(e1 - origin) * glm::length(e2 - origin);
+  
+    glm::vec3 pointOnParallelogram = origin + randomNum1 * e1 + randomNum2*e2 ; // generates random point on the line
+    float area0 = randomNum1 * randomNum2;
+    float area1 = randomNum2 * (1 - randomNum1);
+    float area2 = (1 - randomNum2) * randomNum1;
+    float area3 = (1 - randomNum2) * (1 - randomNum1);
+
+ 
+    // each color is interpolated for the area closer to the opposite point
+    glm::vec3 colorAtPoint = area3 * c0 + area2 * c1 + area1 * c2 + area0 * c3;
+    position = pointOnParallelogram;
+    color = colorAtPoint;
+
 }
 
 /*
@@ -81,10 +103,10 @@ float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& deb
         };
 
         if (bvh.intersect(r, hitInfo, features)) {
-            drawRay(r, debugColor); // Visual debug
+            drawRay(r, glm::vec3 { 1, 0, 0 }); // Visual debug for when ray hits a wall
             return 0.0;
         } else {
-            drawRay(r, glm::vec3 { 1 }); // Visual debug
+            drawRay(r, debugColor); // Visual debug for when the ray does not hit a wall
             return 1.0;
         }
     } else {
@@ -130,44 +152,77 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
     if (features.enableShading) {
         // If shading is enabled, compute the contribution from all lights.
         glm::vec3 contributions {0.0f, 0.0f, 0.0f};
+  
 
         for (const auto& light : scene.lights) {
-
+            float n = float(features.samples); //amount of lights we have, used for averaging out the values of the lights later
+          
+            
             if (std::holds_alternative<PointLight>(light)) {
                 const PointLight pointLight = std::get<PointLight>(light);
                 glm::vec3 contribution { computeShading(pointLight.position, pointLight.color, features, ray, hitInfo) };
-                contribution *= testVisibilityLightSample(pointLight.position, glm::vec3 { 0 }, bvh, features, ray, hitInfo);
+                float res= testVisibilityLightSample(pointLight.position, glm::vec3 { 0 }, bvh, features, ray, hitInfo);
+
+                contribution *= res;
                 contributions += contribution;
-                // Perform your calculations for a point light.
+                
             } else if (std::holds_alternative<SegmentLight>(light) && features.enableSoftShadow) {
                 const SegmentLight segmentLight = std::get<SegmentLight>(light);
-
-                float n = 10.0;
-                float hits=0;
                 glm::vec3 total {0};
-                for (int i = 0; i < 10; i++) {
+
+                for (int i = 0; i < features.samples; i++) {
                     glm::vec3 p;
                     glm::vec3 c;
                     sampleSegmentLight(segmentLight, p, c);
                     if (testVisibilityLightSample(p, c, bvh, features, ray, hitInfo)==1) {
-                        hits++;
-                        total += computeShading(p, c, features, ray, hitInfo);
+                       total += computeShading(p, c, features, ray, hitInfo);
                     }
-                    
                 }
-                
-            
+                /*
+                * SegmentLight Implementation:
+                * 
+                * Calls sampleSegmentLight() method, which gets a random value on a segment light (light source between two points)
+                * and linearly interpolates the color of the two lights at that point. Then it draws a ray with that color back to the point which this is lighting.
+                * Added to the total light contributions for a given point. The amount of samples is determined with a slider in the menu, starting at at least 10 samples.
+                * 
+                * Visual Debug: Rays with the color of the light at a point are colored and sent back to the light source when pressing R at a point. Ray is red when there is 
+                 * something in the way.
+                * 
+                * The total contribution is averaged out for the amount of samples we totally have.
+                */
                 contributions += total/n;
-
-     
-                // Perform your calculations for a segment light.
+              
             } else if (std::holds_alternative<ParallelogramLight>(light) && features.enableSoftShadow) {
                 const ParallelogramLight parallelogramLight = std::get<ParallelogramLight>(light);
-           
-                // Perform your calculations for a parallelogram light.
+                glm::vec3 total { 0 };
+
+                for (int i = 0; i < features.samples; i++) {
+                    glm::vec3 p;
+                    glm::vec3 c;
+                    sampleParallelogramLight(parallelogramLight, p, c);
+                    if (testVisibilityLightSample(p, c, bvh, features, ray, hitInfo) == 1) {
+                       total += computeShading(p, c, features, ray, hitInfo);
+                    }
+                }
+
+                 /*
+                 * ParallelogramLight Implementation:
+                 *
+                 * Calls sampleParallelogram() method, which is analogous with the segment light method, except that it the colors for the random point selected
+                 * are interpolated bilinearly instead of 
+                 *
+                 * The total contribution is averaged out for the amount of samples we totally have.
+                 * 
+                 * Visual Debug: Rays with the color of the light at a point are colored and sent back to the light source when pressing R at a point. Ray is red when there is 
+                 * something in the way.
+                 * 
+                 * The total contribution is averaged out for the amount of samples we totally have.
+                 */
+                contributions += total/n;
             }
+           
         }
-        // TODO: replace this by your own implementation of shading
+        
         return contributions;
 
     } else {
