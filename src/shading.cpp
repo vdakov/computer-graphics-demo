@@ -2,6 +2,10 @@
 #include <cmath>
 #include <glm/geometric.hpp>
 #include <shading.h>
+#include <vector>
+#include <random>
+
+
 
 
 const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& lightColor, const Features& features, Ray ray, HitInfo hitInfo)
@@ -36,4 +40,42 @@ const Ray computeReflectionRay (Ray ray, HitInfo hitInfo)
         .direction = reflectDir,
         .t=std::numeric_limits<float>::max() };
     return reflectionRay;        
+}
+
+const std::vector<Ray> computeGlossyReflectionRay(Ray& ray, HitInfo& hitInfo, Features features) {
+
+    glm::vec3 intersectionPoint { ray.origin + ray.direction * ray.t };
+    int n = features.split;
+
+    std::vector<Ray> dispersed;
+    std::random_device random;
+    std::mt19937 mtGen(random());
+    std::normal_distribution<> normal(0.0, 1.0);
+    
+    float a = features.sideSquareGlossy/100.0f;
+    float alpha = -a / 2.0f + normal(mtGen) * a;
+    float beta = -a / 2.0f + normal(mtGen) * a;
+
+    //glm::vec3 w = normalize(intersectionPoint);
+    Ray reflection = computeReflectionRay(ray,hitInfo); // non-colinear vector 
+    glm::vec3 w = normalize(ray.direction);
+    glm::vec3 u = normalize(glm::cross(ray.direction, hitInfo.normal));
+    glm::vec3 v = normalize(glm::cross(w,u));
+    
+   
+
+    for (int i = 0; i < n; i++) {
+        glm::vec3 pointOnParallelogram = reflection.direction + alpha * u + beta * v;
+        alpha = -a / 2.0f + normal(mtGen) * a;
+        beta = -a / 2.0f + normal(mtGen) * a;
+
+
+        Ray scattered = Ray { .origin = reflection.origin,
+            .direction = normalize(pointOnParallelogram),
+            .t = std::numeric_limits<float>::max() };
+       
+        dispersed.push_back(scattered);
+    }
+
+    return dispersed;
 }

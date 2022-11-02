@@ -7,7 +7,8 @@
 #ifdef NDEBUG
 #include <omp.h>
 #endif
-
+#include <vector>
+#include <shading.cpp>
 
 /*
     Method to return the final color for each pixel in the scene, whether for ray tracing or rasterizatioj
@@ -15,21 +16,40 @@
 glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth)
 {
     HitInfo hitInfo;
+
     if (bvh.intersect(ray, hitInfo, features)) {
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
         drawRay(ray, Lo);
 
-        if (features.enableRecursive) {
+     
+
+        if (features.extra.enableGlossyReflection  && rayDepth<=features.maxDepth) {
             if (hitInfo.material.ks != glm::vec3(0.0f, 0.0f, 0.0f)) {
-                Ray reflection = computeReflectionRay(ray, hitInfo);
-                return getFinalColor(scene, bvh, reflection, features, rayDepth + 1);
+
+                std::vector<Ray> reflections = computeGlossyReflectionRay(ray, hitInfo, features);
+               
+                glm::vec3 color { 0 };
+                for (Ray r : reflections) {
+                    color+= getFinalColor(scene, bvh, r, features, rayDepth + 1)*hitInfo.material.ks;
+
+                }
+                color /= features.split;
+                
+                Lo += color;
+                
             }
-            // TODO: put your own implementation of recursive ray tracing here.
         }
 
 
-
+        if (features.enableRecursive && rayDepth<=features.maxDepth) {
+            if (hitInfo.material.ks != glm::vec3(0.0f, 0.0f, 0.0f)) {
+                Ray reflection = computeReflectionRay(ray, hitInfo);
+                Lo+= getFinalColor(scene, bvh, reflection, features, rayDepth + 1);
+                return Lo;
+            }
+            // TODO: put your own implementation of recursive ray tracing here.
+        }
         /*
         * 
             Method to acquire each texel. When rendering in Ray Tracing, the getFinalColor method computes the color of the current pixel.
@@ -57,8 +77,8 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         }
 
         // Draw a white debug ray if the ray hits.
-        drawRay(ray, Lo);
-
+      
+        //drawRay(ray, Lo);
         // Set the color of the ray to the color of the pixel if the ray hits.
         return Lo;
     } else {
