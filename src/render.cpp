@@ -22,7 +22,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
         drawRay(ray, Lo);
 
-     
+        
 
         if (features.extra.enableGlossyReflection  && rayDepth<=features.maxDepth) {
             if (hitInfo.material.ks != glm::vec3(0.0f, 0.0f, 0.0f)) {
@@ -37,11 +37,23 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
                 color /= features.split;
                 
                 Lo += color;
+
+                /*  
+                    Calls the glossy reflection ray method in shading.cpp and averages out the colors for each of them and adds it to the final color for 
+                    that point. 
+
+                    Color is multiplied by the specularity parameter "ks" of the material reflected off of.
+
+                    Method is called recursively for each dispersed ray with depth increasing by one level for 
+                    each recursive call to avoid infinite loops. 
+
+                */
                 
             }
         }
 
 
+        
         if (features.enableRecursive && rayDepth<=features.maxDepth) {
             if (hitInfo.material.ks != glm::vec3(0.0f, 0.0f, 0.0f)) {
                 Ray reflection = computeReflectionRay(ray, hitInfo);
@@ -50,6 +62,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             }
             // TODO: put your own implementation of recursive ray tracing here.
         }
+
         /*
         * 
             Method to acquire each texel. When rendering in Ray Tracing, the getFinalColor method computes the color of the current pixel.
