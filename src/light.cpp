@@ -86,7 +86,7 @@ void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm:
 */
 float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& debugColor, const BvhInterface& bvh, const Features& features, Ray ray, HitInfo hitInfo)
 {
-    if (features.enableHardShadow) {
+    if (features.enableHardShadow || features.enableSoftShadow) {
         glm::vec3 p = ray.origin + ray.direction * ray.t;
         glm::vec3 dir = glm::normalize(samplePos - p);
         float t = (samplePos - p).x / dir.x;
