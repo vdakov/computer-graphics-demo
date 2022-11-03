@@ -154,6 +154,8 @@ int main(int argc, char** argv)
             }
             ImGui::Separator();
 
+      
+
             if (ImGui::TreeNode("Camera(read only)")) {
                 auto lookAt = camera.lookAt();
                 auto position = camera.position();
@@ -198,7 +200,18 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Draw BVH Leaf", &debugBVHLeaf);
                 if (debugBVHLeaf)
                     ImGui::SliderInt("BVH Leaf", &bvhDebugLeaf, 1, bvh.numLeaves());
+                ImGui::Text("Samples Soft Shadows");
+                ImGui::SliderInt("smpls", &config.features.samples, 0, 1000);
+                ImGui::Text("G_Reflections Depth");
+                ImGui::SliderInt("md", &config.features.maxDepth, 0, 20);
+                ImGui::Text("Num of Rays to Split Into");
+                ImGui::SliderInt("slt", &config.features.split, 10, 100);
+                ImGui::Text("Square Size A");
+                ImGui::SliderInt("ssg", &config.features.sideSquareGlossy, 1, 10);
+
             }
+
+
 
             ImGui::Spacing();
             ImGui::Separator();

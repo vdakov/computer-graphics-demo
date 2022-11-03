@@ -73,5 +73,11 @@ struct Features {
     bool enableTextureMapping = false;
     bool enableAccelStructure = false;
 
+    int samples = 10;
+    int maxDepth = 1;
+    int split = 4;
+    int sideSquareGlossy = 1;
+
     ExtraFeatures extra = {};
 };
+
