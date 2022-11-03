@@ -35,3 +35,16 @@ private:
     int m_numLeaves;
     Scene* m_pScene;
 };
+
+struct Node {
+    bool isLeaf;
+    glm::vec3 lower, upper;
+    std::vector<long> indices;
+};
+
+struct centerTri {
+    long mesh;
+    long triangle;
+    std::vector<glm::vec3> vertices;
+    glm::vec3 centroid;
+};
