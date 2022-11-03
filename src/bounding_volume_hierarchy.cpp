@@ -14,8 +14,12 @@ std::vector<Node> nodes;
 
 /*
     Recursively computes node information and creates nodes. Stores them in the node vector.
+    Parameters: centroids - a vector of centerTri's that contain info about a triangle's centroid;
+                nodes - the node vector;
+                axis - the axis by which the triangles should be split into two parts;
+                maxLevel - the maximum level the BVH should be built up to.
 */
-void recursiveNodes(Scene* scene, std::vector<centerTri>& centroids, std::vector<Node>& nodes, int axis, int maxLevel)
+void recursiveNodes(std::vector<centerTri>& centroids, int axis, int maxLevel)
 {
     glm::vec3 upper { -FLT_MAX };
     glm::vec3 lower { FLT_MAX };
@@ -59,9 +63,9 @@ void recursiveNodes(Scene* scene, std::vector<centerTri>& centroids, std::vector
         ++axis;
     }
     // Calls the recursive function and computes the indices of the child nodes after each call.
-    recursiveNodes(scene, left, nodes, axis, (maxLevel-1));
+    recursiveNodes(left, axis, (maxLevel-1));
     long idx1 = nodes.size()-1;
-    recursiveNodes(scene, right, nodes, axis, (maxLevel-1));
+    recursiveNodes(right, axis, (maxLevel-1));
     long idx2 = nodes.size()-1;
 
     // Adds node to node vector.
@@ -99,7 +103,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
         }
     }
     // Call to function that will recursively fill in the node vector.
-    recursiveNodes(pScene, centroids, nodes, 0, 3);
+    recursiveNodes(centroids, 0, 9);
 }
 
 /*
