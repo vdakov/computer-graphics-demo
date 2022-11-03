@@ -154,6 +154,8 @@ int main(int argc, char** argv)
             }
             ImGui::Separator();
 
+      
+
             if (ImGui::TreeNode("Camera(read only)")) {
                 auto lookAt = camera.lookAt();
                 auto position = camera.position();
@@ -200,10 +202,13 @@ int main(int argc, char** argv)
                     ImGui::SliderInt("BVH Leaf", &bvhDebugLeaf, 1, bvh.numLeaves());
             }
 
+
+
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Text("Lights");
             {
+                ImGui::SliderInt("Samples Soft Shadows", &config.features.samples, 0, 1000);
                 std::vector<std::string> options;
                 options.push_back("None");
                 for (size_t i = 0; i < scene.lights.size(); i++) {
