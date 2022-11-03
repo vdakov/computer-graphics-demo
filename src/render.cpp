@@ -102,15 +102,29 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
     }
 }
 
-
-
-/*
+glm::vec3 boxFilter(Screen& screen, std::vector<glm::vec3> pixels, int x, int y, int filterSize) {
+    
+    glm::vec3 sum { 0.0f };
+    for (int i = -filterSize; i < filterSize + 1; i++) {
+        for (int j = -filterSize; j < filterSize + 1; j++) {
+            if (x + i < 0 || y + j < 0 || x+i >= screen.resolution().x || y+j >= screen.resolution().y) {
+                sum += glm::vec3 { 0 };
+            } else {
+                sum += pixels.at(screen.indexAt(x + i, y + j));
+            }
+        }
+    }
+    sum /= pow((2 * filterSize + 1), 2)*1.0f;
+    return sum;
+}
+    /*
     Method that draws a ray for each point in the scene and calls the getFinalColor() method in each instance of it. 
 */
 void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInterface& bvh, Screen& screen, const Features& features)
 {
     glm::ivec2 windowResolution = screen.resolution();
     // Enable multi threading in Release mode
+
 #ifdef NDEBUG
 #pragma omp parallel for schedule(guided)
 #endif
@@ -122,7 +136,39 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
                 float(y) / float(windowResolution.y) * 2.0f - 1.0f
             };
             const Ray cameraRay = camera.generateRay(normalizedPixelPos);
-            screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features));
+                screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features));
+        }
+    }
+
+    std::vector<glm::vec3> pixels = screen.pixels();
+
+    for (int y = 0; y < windowResolution.y; y++) {
+        for (int x = 0; x != windowResolution.x; x++) {
+            glm::vec3 pixel = pixels.at(screen.indexAt(x, y));
+
+            for (int i = 0; i < 3; i++) {
+                if (pixel[i] <= features.extra.threshold) {
+                    pixel[i] = 0.0f;
+                }
+            }
+
+            pixels[screen.indexAt(x, y)] = pixel;
+        }
+    }
+
+    for (int y = 0; y < windowResolution.y; y++) {
+        for (int x = 0; x != windowResolution.x; x++) {
+            // NOTE: (-1, -1) at the bottom left of the screen, (+1, +1) at the top right of the screen.
+            const glm::vec2 normalizedPixelPos {
+                float(x) / float(windowResolution.x) * 2.0f - 1.0f,
+                float(y) / float(windowResolution.y) * 2.0f - 1.0f
+            };
+            const Ray cameraRay = camera.generateRay(normalizedPixelPos);
+            if (features.extra.enableBloomEffect) {
+                screen.setPixel(x, y, boxFilter(screen, pixels, x, y, features.extra.filterSize) + getFinalColor(scene, bvh, cameraRay, features));
+            } else {
+                screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features));
+            }
         }
     }
 }
