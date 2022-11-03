@@ -147,8 +147,13 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("BVH SAH binning", &config.features.extra.enableBvhSahBinning);
                 ImGui::Checkbox("Bloom effect", &config.features.extra.enableBloomEffect);
                 if (config.features.extra.enableBloomEffect) {
-                    ImGui::SliderInt("Filter size", &config.features.extra.filterSize, 1, 20);
+                    ImGui::Separator();
+                    ImGui::Indent();
+                    ImGui::SliderInt("Filter size", &config.features.extra.filterSize, 1, 100);
                     ImGui::SliderFloat("Treshhold", &config.features.extra.threshold, 0.0f, 1.0f);
+                    ImGui::Checkbox("Bloom debug", &config.features.extra.enableBloomDebug);
+                    ImGui::Unindent();
+                    ImGui::Separator();
                 }
                 ImGui::Checkbox("Texture filtering(bilinear interpolation)", &config.features.extra.enableBilinearTextureFiltering);
                 ImGui::Checkbox("Texture filtering(mipmapping)", &config.features.extra.enableMipmapTextureFiltering);
