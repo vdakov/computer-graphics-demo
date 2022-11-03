@@ -1,6 +1,8 @@
 #include "scene.h"
 #include <cmath>
 #include <iostream>
+#include "framework/mesh.h"
+
 
 Scene loadScenePrebuilt(SceneType type, const std::filesystem::path& dataDir)
 {
@@ -29,9 +31,9 @@ Scene loadScenePrebuilt(SceneType type, const std::filesystem::path& dataDir)
     case CubeTextured: {
         auto subMeshes = loadMesh(dataDir / "cube-textured.obj");
         /*
-        * Loads a pointer to the image file 
+            Loads a pointer to the image file 
         */
-        subMeshes[0].material.kdTexture = std::shared_ptr<Image>(new Image(dataDir/"default.png"));
+        subMeshes[0].material.kdTexture = std::shared_ptr<Image>(new Image(dataDir / "default.png"));
 
         std::move(std::begin(subMeshes), std::end(subMeshes), std::back_inserter(scene.meshes));
         scene.lights.emplace_back(PointLight { glm::vec3(-1.0, 1.5, -1.0), glm::vec3(1) });
@@ -84,7 +86,8 @@ Scene loadScenePrebuilt(SceneType type, const std::filesystem::path& dataDir)
     } break;
     case Custom: {
         // === Replace custom.obj by your own 3D model (or call your 3D model custom.obj) ===
-        auto subMeshes = loadMesh(dataDir / "custom.obj");
+        auto subMeshes = loadMesh(dataDir / "debugTexture.obj");
+        subMeshes[0].material.kdTexture = std::shared_ptr<Image>(new Image(dataDir / "debugTexture.png"));
         std::move(std::begin(subMeshes), std::end(subMeshes), std::back_inserter(scene.meshes));
         // === CHANGE THE LIGHTING IF DESIRED ===
         scene.lights.emplace_back(PointLight { glm::vec3(-1, 1, -1), glm::vec3(1) });

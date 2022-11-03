@@ -71,7 +71,13 @@ struct Features {
     bool enableSoftShadow = false;
     bool enableNormalInterp = false;
     bool enableTextureMapping = false;
-    bool enableAccelStructure = false;
+    bool enableAccelStructure = true;
+
+    int samples = 10;
+    int maxDepth = 1;
+    int split = 4;
+    int sideSquareGlossy = 1;
 
     ExtraFeatures extra = {};
 };
+

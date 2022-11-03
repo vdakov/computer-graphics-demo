@@ -44,3 +44,4 @@ glm::vec2 interpolateTexCoord (const glm::vec2& t0, const glm::vec2& t1, const g
 
         return tex1 + tex2 + tex3;
 }
+

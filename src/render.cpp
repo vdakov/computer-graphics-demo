@@ -7,7 +7,8 @@
 #ifdef NDEBUG
 #include <omp.h>
 #endif
-
+#include <vector>
+#include <shading.cpp>
 
 /*
     Method to return the final color for each pixel in the scene, whether for ray tracing or rasterizatioj
@@ -15,20 +16,52 @@
 glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth)
 {
     HitInfo hitInfo;
+
     if (bvh.intersect(ray, hitInfo, features)) {
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
         drawRay(ray, Lo);
 
-        if (features.enableRecursive) {
+        
+
+        if (features.extra.enableGlossyReflection  && rayDepth<=features.maxDepth) {
             if (hitInfo.material.ks != glm::vec3(0.0f, 0.0f, 0.0f)) {
-                Ray reflection = computeReflectionRay(ray, hitInfo);
-                return getFinalColor(scene, bvh, reflection, features, rayDepth + 1);
+
+                std::vector<Ray> reflections = computeGlossyReflectionRay(ray, hitInfo, features);
+               
+                glm::vec3 color { 0 };
+                for (Ray r : reflections) {
+                    color+= getFinalColor(scene, bvh, r, features, rayDepth + 1)*hitInfo.material.ks;
+
+                }
+                color /= features.split;
+                
+                Lo += color;
+
+                /*  
+                    Calls the glossy reflection ray method in shading.cpp and averages out the colors for each of them and adds it to the final color for 
+                    that point. 
+
+                    Color is multiplied by the specularity parameter "ks" of the material reflected off of.
+
+                    Method is called recursively for each dispersed ray with depth increasing by one level for 
+                    each recursive call to avoid infinite loops. 
+
+                */
+                
             }
-            // TODO: put your own implementation of recursive ray tracing here.
         }
 
 
+        
+        if (features.enableRecursive && rayDepth<=features.maxDepth) {
+            if (hitInfo.material.ks != glm::vec3(0.0f, 0.0f, 0.0f)) {
+                Ray reflection = computeReflectionRay(ray, hitInfo);
+                Lo+= getFinalColor(scene, bvh, reflection, features, rayDepth + 1);
+                return Lo;
+            }
+            // TODO: put your own implementation of recursive ray tracing here.
+        }
 
         /*
         * 
@@ -40,14 +73,25 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
         */
         if (features.enableTextureMapping) {
+
+            /*
+                Calls the bilinear interpolation texel sampling in case it is enabled
+            */
+            if (hitInfo.material.kdTexture && features.extra.enableBilinearTextureFiltering) {
+                return acquireTexelBilinear(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
+            }
+
+            /*
+               Calls the texture with normal interpolation sampling
+            */
             if (hitInfo.material.kdTexture) {
                 return acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
             }
         }
 
         // Draw a white debug ray if the ray hits.
-        drawRay(ray, Lo);
-
+      
+        //drawRay(ray, Lo);
         // Set the color of the ray to the color of the pixel if the ray hits.
         return Lo;
     } else {

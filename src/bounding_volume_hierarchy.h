@@ -7,6 +7,19 @@
 // Forward declaration.
 struct Scene;
 
+struct Node {
+    bool isLeaf;
+    glm::vec3 lower, upper;
+    std::vector<long> indices;
+};
+
+struct centerTri {
+    long mesh;
+    long triangle;
+    std::vector<glm::vec3> vertices;
+    glm::vec3 centroid;
+};
+
 class BoundingVolumeHierarchy {
 public:
     // Constructor. Receives the scene and builds the bounding volume hierarchy.
@@ -24,6 +37,10 @@ public:
     // Visual Debug 2: Draw the triangles of the i-th leaf
     void debugDrawLeaf(int leafIdx);
 
+
+    float TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, const Features& features) const;
+
+
     // Return true if something is hit, returns false otherwise.
     // Only find hits if they are closer than t stored in the ray and the intersection
     // is on the correct side of the origin (the new t >= 0).
@@ -31,20 +48,11 @@ public:
 
 
 private:
+
     int m_numLevels;
     int m_numLeaves;
     Scene* m_pScene;
+
+    float IntersectRayWithAABB(Ray& ray, Node& n) const;
 };
 
-struct Node {
-    bool isLeaf;
-    glm::vec3 lower, upper;
-    std::vector<long> indices;
-};
-
-struct centerTri {
-    long mesh;
-    long triangle;
-    std::vector<glm::vec3> vertices;
-    glm::vec3 centroid;
-};
