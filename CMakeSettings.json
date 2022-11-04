@@ -12,14 +12,16 @@
       "ctestCommandArgs": ""
     },
     {
-      "buildCommandArgs": "",
+      "name": "x64-Release",
+      "generator": "Ninja",
+      "configurationType": "Release",
       "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
       "cmakeCommandArgs": "",
-      "configurationType": "RelWithDebInfo",
+      "buildCommandArgs": "",
       "ctestCommandArgs": "",
       "inheritEnvironments": [ "msvc_x64_x64" ],
-      "installRoot": "${projectDir}\\out\\install\\${name}",
-      "name": "x64-Release"
+      "variables": []
     }
   ]
 }
