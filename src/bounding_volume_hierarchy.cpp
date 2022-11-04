@@ -254,45 +254,74 @@ float BoundingVolumeHierarchy::IntersectRayWithAABB(Ray& ray, Node& n) const
     return tin;
 }
 
-float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, const Features& features) const
+float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, const Features& features, std::vector<std::pair<long, long>>& visitedTriangles) const
 {
     if (!n.isLeaf) {
+
+        AxisAlignedBox aabb { n.lower, n.upper };
+        drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
+
         float n1 { IntersectRayWithAABB(ray, nodes.at(n.indices[0])) };
         float n2 { IntersectRayWithAABB(ray, nodes.at(n.indices[1])) };
-
-        return n1 < n2 ? TraverseBVH(ray, nodes.at(n.indices[0]), hitInfo, features) : TraverseBVH(ray, nodes.at(n.indices[1]), hitInfo, features);
+        float tempResult {};
+        if (n1 == FLT_MAX && n2 == FLT_MAX)
+            return FLT_MAX;
+        else if (n1 == FLT_MAX)
+            return TraverseBVH(ray, nodes.at(n.indices[1]), hitInfo, features, visitedTriangles);
+        else if (n2 == FLT_MAX)
+            return TraverseBVH(ray, nodes.at(n.indices[0]), hitInfo, features, visitedTriangles);
+        else if (n1 < n2) {
+            float t_before { ray.t };
+            float n1_t { TraverseBVH(ray, nodes.at(n.indices[0]), hitInfo, features, visitedTriangles) };
+            if (ray.t < t_before)
+                return n1_t;
+            float n2_t { TraverseBVH(ray, nodes.at(n.indices[1]), hitInfo, features, visitedTriangles) };
+            return std::min(n1_t, n2_t);
+            
+        } else {
+            float t_before { ray.t };
+            float n2_t { TraverseBVH(ray, nodes.at(n.indices[1]), hitInfo, features, visitedTriangles) };
+            if (ray.t < t_before)
+                return n2_t;
+            float n1_t { TraverseBVH(ray, nodes.at(n.indices[0]), hitInfo, features, visitedTriangles) };
+            return std::min(n1_t, n2_t);
+        
+        
+        }
+            return std::min(TraverseBVH(ray, nodes.at(n.indices[1]), hitInfo, features, visitedTriangles), TraverseBVH(ray, nodes.at(n.indices[0]), hitInfo, features, visitedTriangles) );
+ 
     }
     float minT { FLT_MAX };
     for (int i = 0; i < n.indices.size(); i += 2) {
         Mesh foundMesh { m_pScene->meshes.at(n.indices[i]) };
-        const auto& tri { foundMesh.triangles.at(n.indices[i+1]) };
-        const auto v0 = foundMesh.vertices[tri[0]];
-        const auto v1 = foundMesh.vertices[tri[1]];
-        const auto v2 = foundMesh.vertices[tri[2]];
-        if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
-            hitInfo.material = foundMesh.material;
-            hitInfo.normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
+            const auto& tri { foundMesh.triangles.at(n.indices[i + 1]) };
+            const auto v0 = foundMesh.vertices[tri[0]];
+            const auto v1 = foundMesh.vertices[tri[1]];
+            const auto v2 = foundMesh.vertices[tri[2]];
+            if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
+                hitInfo.material = foundMesh.material;
+                hitInfo.normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
 
-            const glm::vec3 intersectionPoint = ray.origin + ray.t * ray.direction;
-            hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, intersectionPoint);
+                const glm::vec3 intersectionPoint = ray.origin + ray.t * ray.direction;
+                hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, intersectionPoint);
+                if (features.enableNormalInterp) {
+                    hitInfo.normal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
+                } else {
+                    hitInfo.normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
+                }
 
-            if (features.enableNormalInterp) {
-                hitInfo.normal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
+                /*
+                 * IF TEXTURE MAPPING IS ENABLED:
+                 *
+                 * Computes all the fields necessary for the Hitpoint object. It represents the point a ray in a scene intesects and in this case
+                 * it makes all the computations necessary for textures through the methods in "interpolate.cpp".
+                 *
+                 */
+                if (features.enableTextureMapping) {
+                    hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
+                }
+                minT = std::min(minT, ray.t);
             }
-
-            /*
-             * IF TEXTURE MAPPING IS ENABLED:
-             *
-             * Computes all the fields necessary for the Hitpoint object. It represents the point a ray in a scene intesects and in this case
-             * it makes all the computations necessary for textures through the methods in "interpolate.cpp".
-             *
-             */
-            if (features.enableTextureMapping) {
-                hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
-            }
-
-        }
-        minT = std::min(minT, ray.t);
     }
     return minT;
 }
@@ -319,12 +348,13 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 const auto v2 = mesh.vertices[tri[2]];
                 if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
                     hitInfo.material = mesh.material;
-                    hitInfo.normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
                     const glm::vec3 intersectionPoint = ray.origin + ray.t * ray.direction;
                     hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, intersectionPoint);
 
                     if (features.enableNormalInterp) {
                         hitInfo.normal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
+                    } else {
+                        hitInfo.normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
                     }
 
                     /*
@@ -363,15 +393,14 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         return hit;
     } else {
         bool hit = false;
-        std::vector<float> indices {};
-        float minT { std::numeric_limits<float>::max() };
-        for (Node n : nodes) {
-            float foundT { IntersectRayWithAABB(ray, n) };
-            if (foundT != FLT_MAX) {
-                hit = true;
-                minT = std::min(TraverseBVH(ray, n, hitInfo, features), minT);
-            }
-        }
+        std::vector<float> intersections {};
+        std::pair<long, float> closestAABB {0, FLT_MAX};
+        float minT { FLT_MAX };
+        std::vector<std::pair<long, long>> visitedLeaves {};
+        minT = std::min(TraverseBVH(ray, nodes.at(nodes.size() - 1), hitInfo, features, visitedLeaves), minT);
+
+        if (minT != FLT_MAX)
+            hit = true;
         // TODO: implement here the bounding volume hierarchy traversal.
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
