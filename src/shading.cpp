@@ -145,7 +145,7 @@ const std::vector<Ray> computeRayIrregular(Ray& ray, HitInfo& hitInfo, Features 
     drawTriangle(v3, v1, v0);
 
     for (int i = 0; i < n; i++) {
-        glm::vec3 pointOnParallelogram = reflection.direction + alpha * u + beta * v;
+        glm::vec3 pointOnParallelogram = ray.direction + alpha * u + beta * v;
         alpha = -a / 2.0f + uniform(mtGen) * a;
         beta = -a / 2.0f + uniform(mtGen) * a;
 

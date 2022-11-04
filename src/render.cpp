@@ -27,6 +27,11 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
         
         if (features.extra.enableIrregularSampling && rayDepth<=0) {
+                
+                float n = features.samplesIrregular;
+                if (features.extra.enableGlossyReflection) {
+                    n *= features.split;
+                }
           
 
                 std::vector<Ray> scattered = computeRayIrregular(ray, hitInfo, features);
@@ -35,7 +40,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
                 for (Ray r : scattered) {
                     color += getFinalColor(scene, bvh, r, features, rayDepth + 1);
                 }
-                color /= features.split;
+                color /= n;
 
                 Lo += color;
 
@@ -49,13 +54,19 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             if (hitInfo.material.ks != glm::vec3(0.0f, 0.0f, 0.0f)) {
 
                 std::vector<Ray> reflections = computeGlossyReflectionRay(ray, hitInfo, features);
+
+                float n = features.split;
+                if (features.extra.enableGlossyReflection) {
+                    n *= features.samplesIrregular;
+                }
+
                
                 glm::vec3 color { 0 };
                 for (Ray r : reflections) {
                     color+= getFinalColor(scene, bvh, r, features, rayDepth + 1)*hitInfo.material.ks;
 
                 }
-                color /= features.split;
+                color /= n;
                 
                 Lo += color;
 
@@ -73,10 +84,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             }
         }
 
-        if (features.extra.enableIrregularSampling) {
-
-        }
-
+        
 
         
         if (features.enableRecursive && rayDepth<=features.maxDepth) {

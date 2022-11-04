@@ -81,6 +81,7 @@ struct Features {
 
 
     int samples = 10;
+    int samplesIrregular = 10;
     int maxDepth = 1;
     int split = 4;
     int sideSquareGlossy = 1;
