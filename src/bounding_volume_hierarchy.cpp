@@ -262,84 +262,92 @@ float BoundingVolumeHierarchy::IntersectRayWithAABB(Ray& ray, Node& n) const
  * Helper method for recursive BVH traversal. Returns the distance from the closest intersection point. If no intersections are found,
  * returns FLT_MAX.
  */
-float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, const Features& features) const
+float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node* n, HitInfo& hitInfo, const Features& features) const
 {
-    if (!n.isLeaf) {
-
-        if (enableDebugDraw) {
-            AxisAlignedBox aabb { n.lower, n.upper };
-            drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
-        }
-
-        long ni_0 { n.indices.at(0) };
-        long ni_1 { n.indices.at(1) };
-
-        float n0 { IntersectRayWithAABB(ray, nodes.at(ni_0)) };
-        float n1 { IntersectRayWithAABB(ray, nodes.at(ni_1)) };
-        float tempResult {};
-        if (n0 == FLT_MAX && n1 == FLT_MAX) {
-            return FLT_MAX;
-        } else if (n0 == FLT_MAX) {
-            return TraverseBVH(ray, nodes.at(ni_1), hitInfo, features);
-        } else if (n1 == FLT_MAX) {
-            return TraverseBVH(ray, nodes.at(ni_0), hitInfo, features);
-        } else if (n1 < n0) {
-            std::swap(ni_0, ni_1);
-        }
-        float t_before { ray.t };
-        float n0_t { TraverseBVH(ray, nodes.at(ni_0), hitInfo, features) };
-        float n1_t { TraverseBVH(ray, nodes.at(ni_1), hitInfo, features) };
-        return std::min(n0_t, n1_t);
-    }
+    std::vector<Node*> stack { n };
     float minT { FLT_MAX };
     static std::optional<std::pair<Mesh, glm::uvec3>> debugTri; // Used for visual debug
-    for (int i = 0; i < n.indices.size(); i += 2) {
-        float prior_t { ray.t };                                // Used for visual debug
-        Mesh foundMesh { m_pScene->meshes.at(n.indices[i]) };
-        const auto& tri { foundMesh.triangles.at(n.indices[i + 1]) };
-        const auto v0 = foundMesh.vertices[tri[0]];
-        const auto v1 = foundMesh.vertices[tri[1]];
-        const auto v2 = foundMesh.vertices[tri[2]];
-        if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
-            hitInfo.material = foundMesh.material;
-
-            const glm::vec3 intersectionPoint = ray.origin + ray.t * ray.direction;
-            hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, intersectionPoint);
-            if (features.enableNormalInterp) {
-                hitInfo.normal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
-            } else {
-                hitInfo.normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
-            }
-
-            /*
-             * IF TEXTURE MAPPING IS ENABLED:
-             *
-             * Computes all the fields necessary for the Hitpoint object. It represents the point a ray in a scene intesects and in this case
-             * it makes all the computations necessary for textures through the methods in "interpolate.cpp".
-             *
-             */
-            if (features.enableTextureMapping) {
-                hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
-            }
+    while (!stack.empty()) {
+        Node* currNode { stack.back() };
+        stack.pop_back();
+        if (!currNode->isLeaf) {
             if (enableDebugDraw) {
-                if (ray.t < prior_t) {
-                    glm::vec3 color { 1.0f, 0.0f, 1.0f };
-                    glColor3f(color.x, color.y, color.z);
-                    drawTriangle(foundMesh.vertices.at(tri[0]), foundMesh.vertices.at(tri[1]), foundMesh.vertices.at(tri[2]));
-                    if (debugTri && debugTri->second != tri) {
-                        color = { 0.0f, 0.0f, 1.0f };
-                        glColor3f(color.x, color.y, color.z);
-                        drawTriangle(debugTri->first.vertices.at(debugTri->second[0]), 
-                            debugTri->first.vertices.at(debugTri->second[1]), 
-                            debugTri->first.vertices.at(debugTri->second[2]));
-                    }
-                    debugTri = {foundMesh, tri};
-                }
-           }
+                AxisAlignedBox aabb { currNode->lower, currNode->upper };
+                drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
+            }
 
-            minT = std::min(minT, ray.t);
+            long ni_0 { currNode->indices.at(0) };
+            long ni_1 { currNode->indices.at(1) };
+
+            float n0 { IntersectRayWithAABB(ray, nodes.at(ni_0)) };
+            float n1 { IntersectRayWithAABB(ray, nodes.at(ni_1)) };
+            float tempResult {};
+            if (n0 == FLT_MAX && n1 == FLT_MAX) {
+                ;
+            } else if (n0 == FLT_MAX) {
+                stack.push_back(&(nodes.at(ni_1)));
+            } else if (n1 == FLT_MAX) {
+                stack.push_back(&(nodes.at(ni_0)));
+            } else if (n1 < n0) {
+                stack.push_back(&(nodes.at(ni_0)));
+                stack.push_back(&(nodes.at(ni_1)));
+
+            } else {
+                stack.push_back(&(nodes.at(ni_1)));
+                stack.push_back(&(nodes.at(ni_0)));
+            }
+        } else {
+
+            for (int i = 0; i < currNode->indices.size(); i += 2) {
+                float prior_t { ray.t }; // Used for visual debug
+                Mesh foundMesh { m_pScene->meshes.at(currNode->indices[i]) };
+                const auto& tri { foundMesh.triangles.at(currNode->indices[i + 1]) };
+                const auto v0 = foundMesh.vertices[tri[0]];
+                const auto v1 = foundMesh.vertices[tri[1]];
+                const auto v2 = foundMesh.vertices[tri[2]];
+                if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
+                    hitInfo.material = foundMesh.material;
+
+                    const glm::vec3 intersectionPoint = ray.origin + ray.t * ray.direction;
+                    hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, intersectionPoint);
+                    if (features.enableNormalInterp) {
+                        hitInfo.normal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
+                    } else {
+                        hitInfo.normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
+                    }
+
+                    /*
+                     * IF TEXTURE MAPPING IS ENABLED:
+                     *
+                     * Computes all the fields necessary for the Hitpoint object. It represents the point a ray in a scene intesects and in this case
+                     * it makes all the computations necessary for textures through the methods in "interpolate.cpp".
+                     *
+                     */
+                    if (features.enableTextureMapping) {
+                        hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
+                    }
+                    if (enableDebugDraw) {
+                        if (ray.t < prior_t) {
+                            glm::vec3 color { 1.0f, 0.0f, 1.0f };
+                            glColor3f(color.x, color.y, color.z);
+                            drawTriangle(foundMesh.vertices.at(tri[0]), foundMesh.vertices.at(tri[1]), foundMesh.vertices.at(tri[2]));
+                            if (debugTri && debugTri->second != tri) {
+                                color = { 0.0f, 0.0f, 1.0f };
+                                glColor3f(color.x, color.y, color.z);
+                                drawTriangle(debugTri->first.vertices.at(debugTri->second[0]),
+                                    debugTri->first.vertices.at(debugTri->second[1]),
+                                    debugTri->first.vertices.at(debugTri->second[2]));
+                            }
+                            debugTri = { foundMesh, tri };
+                        }
+                    }
+
+                    minT = std::min(minT, ray.t);
+                }
+            }
         }
     }
+
     return minT;
 }
 
@@ -411,7 +419,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         std::vector<float> intersections {};
         std::pair<long, float> closestAABB { 0, FLT_MAX };
         float minT { FLT_MAX };
-        minT = std::min(TraverseBVH(ray, nodes.at(nodes.size() - 1), hitInfo, features), minT);
+        minT = std::min(TraverseBVH(ray, &(nodes.at(nodes.size() - 1)), hitInfo, features), minT);
 
         if (minT != FLT_MAX)
             hit = true;
