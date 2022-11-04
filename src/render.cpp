@@ -19,8 +19,29 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
     if (bvh.intersect(ray, hitInfo, features)) {
 
+
+
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
         drawRay(ray, Lo);
+
+
+        
+        if (features.extra.enableIrregularSampling && rayDepth<=0) {
+          
+
+                std::vector<Ray> scattered = computeRayIrregular(ray, hitInfo, features);
+
+                glm::vec3 color { 0 };
+                for (Ray r : scattered) {
+                    color += getFinalColor(scene, bvh, r, features, rayDepth + 1);
+                }
+                color /= features.split;
+
+                Lo += color;
+
+              
+            
+        }
 
         
 
@@ -50,6 +71,10 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
                 */
                 
             }
+        }
+
+        if (features.extra.enableIrregularSampling) {
+
         }
 
 
