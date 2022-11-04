@@ -1,12 +1,12 @@
 #include "bounding_volume_hierarchy.h"
+#include "draw.cpp"
 #include "draw.h"
+#include "interpolate.cpp"
+#include "interpolate.h"
 #include "intersect.h"
 #include "scene.h"
 #include "texture.h"
-#include "interpolate.h"
 #include <glm/glm.hpp>
-#include "draw.cpp"
-#include "interpolate.cpp"
 
 void debugNormalInterpolation(const Vertex& v0, const Vertex& v1, const Vertex& v2, Ray& ray, const Features& features);
 
@@ -38,7 +38,7 @@ void recursiveNodes(std::vector<centerTri>& centroids, int axis, int maxLevel)
     // Checks for base case of recursion.
     if (maxLevel == 0 || centroids.size() == 1) {
         std::vector<long> idx;
-        for (centerTri tri : centroids) { 
+        for (centerTri tri : centroids) {
             idx.push_back(tri.mesh);
             idx.push_back(tri.triangle);
         }
@@ -63,10 +63,10 @@ void recursiveNodes(std::vector<centerTri>& centroids, int axis, int maxLevel)
         ++axis;
     }
     // Calls the recursive function and computes the indices of the child nodes after each call.
-    recursiveNodes(left, axis, (maxLevel-1));
-    long idx1 = nodes.size()-1;
-    recursiveNodes(right, axis, (maxLevel-1));
-    long idx2 = nodes.size()-1;
+    recursiveNodes(left, axis, (maxLevel - 1));
+    long idx1 = nodes.size() - 1;
+    recursiveNodes(right, axis, (maxLevel - 1));
+    long idx2 = nodes.size() - 1;
 
     // Adds node to node vector.
     nodes.push_back(
@@ -98,8 +98,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
                     .mesh = i,
                     .triangle = j,
                     .vertices = { v0, v1, v2 },
-                    .centroid = v0 + (v1 - v0) / 2.0f + (v2 - v0) / 2.0f 
-                });
+                    .centroid = v0 + (v1 - v0) / 2.0f + (v2 - v0) / 2.0f });
         }
     }
     // Call to function that will recursively fill in the node vector.
@@ -109,7 +108,8 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
 /*
     Recursive function to count node tree depth.
 */
-int numLevelsHelper(int idx) {
+int numLevelsHelper(int idx)
+{
     if (nodes.at(idx).isLeaf) {
         return 1;
     } else {
@@ -122,7 +122,7 @@ int numLevelsHelper(int idx) {
 */
 int BoundingVolumeHierarchy::numLevels() const
 {
-    return numLevelsHelper(nodes.size()-1);
+    return numLevelsHelper(nodes.size() - 1);
 }
 
 /*
@@ -146,13 +146,13 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
 {
     m_numLevels = numLevels();
 
-    std::vector<Node> nodes1 { nodes.at(nodes.size()-1) };
+    std::vector<Node> nodes1 { nodes.at(nodes.size() - 1) };
     std::vector<Node> nodes2;
     Node temp;
     for (int i = 0; i < level; i++) {
         if (i % 2 == 0) {
             while (!nodes1.empty()) {
-                temp = nodes1.at(nodes1.size()-1);
+                temp = nodes1.at(nodes1.size() - 1);
                 if (temp.isLeaf) {
                     nodes2.push_back(temp);
                 } else {
@@ -161,8 +161,7 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
                 }
                 nodes1.pop_back();
             }
-        }
-        else {
+        } else {
             while (!nodes2.empty()) {
                 temp = nodes2.at(nodes2.size() - 1);
                 if (temp.isLeaf) {
@@ -188,9 +187,8 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
     }
 }
 
-
 /*
-    Visualises the 'leafIdx'-th leaf node of the node vector. Draws the AABB of the selected node as well as all the triangles that 
+    Visualises the 'leafIdx'-th leaf node of the node vector. Draws the AABB of the selected node as well as all the triangles that
     the node points to in different colors using drawAABB and drawTriangle functions from draw.cpp.
 */
 void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
@@ -215,7 +213,7 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
         }
     }
 
-    std::vector<glm::vec3> colors = { glm::vec3 { 1.0f, 0.0f, 1.0f }, glm::vec3 { 0.5f, 0.0f, 0.5f }, glm::vec3 {0.87f, 0.0f, 1.0f},
+    std::vector<glm::vec3> colors = { glm::vec3 { 1.0f, 0.0f, 1.0f }, glm::vec3 { 0.5f, 0.0f, 0.5f }, glm::vec3 { 0.87f, 0.0f, 1.0f },
         glm::vec3 { 1.0f, 0.46f, 1.0f } };
 
     std::vector<long> indices = nodes.at(index).indices;
@@ -227,23 +225,135 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
         glColor3f(colors.at(i % colors.size())[0], colors.at(i % colors.size())[1], colors.at(i % colors.size())[2]);
         drawTriangle(mesh.vertices.at(triangle[0]), mesh.vertices.at(triangle[1]), mesh.vertices.at(triangle[2]));
     }
-    
+
     AxisAlignedBox aabb { nodes.at(index).lower, nodes.at(index).upper };
     drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
 }
 
+/*
+ * Intersects ray with an Axis-Aligned Bounding Box. Returns FLT_MAX if no intersections are found, otherwise returns the
+ * distance from the origin of the ray.
+ */
+float BoundingVolumeHierarchy::IntersectRayWithAABB(Ray& ray, Node& n) const
+{
+    float txmin { (n.lower.x - ray.origin.x) / ray.direction.x };
+    float txmax { (n.upper.x - ray.origin.x) / ray.direction.x };
+    float tymin { (n.lower.y - ray.origin.y) / ray.direction.y };
+    float tymax { (n.upper.y - ray.origin.y) / ray.direction.y };
+    float tzmin { (n.lower.z - ray.origin.z) / ray.direction.z };
+    float tzmax { (n.upper.z - ray.origin.z) / ray.direction.z };
+
+    float tinx { std::min(txmin, txmax) };
+    float toutx { std::max(txmin, txmax) };
+    float tiny { std::min(tymin, tymax) };
+    float touty { std::max(tymin, tymax) };
+    float tinz { std::min(tzmin, tzmax) };
+    float toutz { std::max(tzmin, tzmax) };
+
+    float tin { std::max({ tinx, tiny, tinz }) };
+    float tout { std::min({ toutx, touty, toutz }) };
+
+    if (tin > tout || tout <= 0)
+        return FLT_MAX;
+    return tin;
+}
+
+/*
+ * Helper method for recursive BVH traversal. Returns the distance from the closest intersection point. If no intersections are found,
+ * returns FLT_MAX.
+ */
+float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, const Features& features) const
+{
+    if (!n.isLeaf) {
+
+        if (enableDebugDraw) {
+            AxisAlignedBox aabb { n.lower, n.upper };
+            drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
+        }
+
+        long ni_0 { n.indices.at(0) };
+        long ni_1 { n.indices.at(1) };
+
+        float n0 { IntersectRayWithAABB(ray, nodes.at(ni_0)) };
+        float n1 { IntersectRayWithAABB(ray, nodes.at(ni_1)) };
+        float tempResult {};
+        if (n0 == FLT_MAX && n1 == FLT_MAX) {
+            return FLT_MAX;
+        } else if (n0 == FLT_MAX) {
+            return TraverseBVH(ray, nodes.at(ni_1), hitInfo, features);
+        } else if (n1 == FLT_MAX) {
+            return TraverseBVH(ray, nodes.at(ni_0), hitInfo, features);
+        } else if (n1 < n0) {
+            std::swap(ni_0, ni_1);
+        }
+        float t_before { ray.t };
+        float n0_t { TraverseBVH(ray, nodes.at(ni_0), hitInfo, features) };
+        float n1_t { TraverseBVH(ray, nodes.at(ni_1), hitInfo, features) };
+        return std::min(n0_t, n1_t);
+    }
+    float minT { FLT_MAX };
+    static std::optional<std::pair<Mesh, glm::uvec3>> debugTri; // Used for visual debug
+    for (int i = 0; i < n.indices.size(); i += 2) {
+        float prior_t { ray.t };                                // Used for visual debug
+        Mesh foundMesh { m_pScene->meshes.at(n.indices[i]) };
+        const auto& tri { foundMesh.triangles.at(n.indices[i + 1]) };
+        const auto v0 = foundMesh.vertices[tri[0]];
+        const auto v1 = foundMesh.vertices[tri[1]];
+        const auto v2 = foundMesh.vertices[tri[2]];
+        if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
+            hitInfo.material = foundMesh.material;
+
+            const glm::vec3 intersectionPoint = ray.origin + ray.t * ray.direction;
+            hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, intersectionPoint);
+            if (features.enableNormalInterp) {
+                hitInfo.normal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
+            } else {
+                hitInfo.normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
+            }
+
+            /*
+             * IF TEXTURE MAPPING IS ENABLED:
+             *
+             * Computes all the fields necessary for the Hitpoint object. It represents the point a ray in a scene intesects and in this case
+             * it makes all the computations necessary for textures through the methods in "interpolate.cpp".
+             *
+             */
+            if (features.enableTextureMapping) {
+                hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
+            }
+            if (enableDebugDraw) {
+                if (ray.t < prior_t) {
+                    glm::vec3 color { 1.0f, 0.0f, 1.0f };
+                    glColor3f(color.x, color.y, color.z);
+                    drawTriangle(foundMesh.vertices.at(tri[0]), foundMesh.vertices.at(tri[1]), foundMesh.vertices.at(tri[2]));
+                    if (debugTri && debugTri->second != tri) {
+                        color = { 0.0f, 0.0f, 1.0f };
+                        glColor3f(color.x, color.y, color.z);
+                        drawTriangle(debugTri->first.vertices.at(debugTri->second[0]), 
+                            debugTri->first.vertices.at(debugTri->second[1]), 
+                            debugTri->first.vertices.at(debugTri->second[2]));
+                    }
+                    debugTri = {foundMesh, tri};
+                }
+           }
+
+            minT = std::min(minT, ray.t);
+        }
+    }
+    return minT;
+}
 
 // Return true if something is hit, returns false otherwise. Only find hits if they are closer than t stored
 // in the ray and if the intersection is on the correct side of the origin (the new t >= 0). Replace the code
 // by a bounding volume hierarchy acceleration structure as described in the assignment. You can change any
 // file you like, including bounding_volume_hierarchy.h.
 bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Features& features) const
-{   
+{
     // If BVH is not enabled, use the naive implementation.
     float currentRay = ray.t;
-     Vertex v_0;
-     Vertex v_1;
-     Vertex v_2;
+    Vertex v_0;
+    Vertex v_1;
+    Vertex v_2;
 
     if (!features.enableAccelStructure) {
         bool hit = false;
@@ -255,37 +365,36 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 const auto v2 = mesh.vertices[tri[2]];
                 if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
                     hitInfo.material = mesh.material;
-                    hitInfo.normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
                     const glm::vec3 intersectionPoint = ray.origin + ray.t * ray.direction;
                     hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, intersectionPoint);
 
                     if (features.enableNormalInterp) {
                         hitInfo.normal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
+                    } else {
+                        hitInfo.normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
                     }
 
                     /*
-                    * IF TEXTURE MAPPING IS ENABLED:
-                    * 
-                    * Computes all the fields necessary for the Hitpoint object. It represents the point a ray in a scene intesects and in this case
-                    * it makes all the computations necessary for textures through the methods in "interpolate.cpp". 
-                    * 
-                    */
-                    if (features.enableTextureMapping ){
+                     * IF TEXTURE MAPPING IS ENABLED:
+                     *
+                     * Computes all the fields necessary for the Hitpoint object. It represents the point a ray in a scene intesects and in this case
+                     * it makes all the computations necessary for textures through the methods in "interpolate.cpp".
+                     *
+                     */
+                    if (features.enableTextureMapping) {
                         hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
-
                     }
+
                     hit = true;
                 }
 
-                //retrieves the vertices and ray weight of the triangle the ray intersects first 
+                // retrieves the vertices and ray weight of the triangle the ray intersects first
                 if (ray.t < currentRay) {
-                        currentRay = ray.t;
-                        v_0 = v0;
-                        v_1 = v1;
-                        v_2 = v2;
+                    currentRay = ray.t;
+                    v_0 = v0;
+                    v_1 = v1;
+                    v_2 = v2;
                 }
-
-                
             }
         }
         // Intersect with spheres.
@@ -298,21 +407,28 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
         return hit;
     } else {
+        bool hit = false;
+        std::vector<float> intersections {};
+        std::pair<long, float> closestAABB { 0, FLT_MAX };
+        float minT { FLT_MAX };
+        minT = std::min(TraverseBVH(ray, nodes.at(nodes.size() - 1), hitInfo, features), minT);
+
+        if (minT != FLT_MAX)
+            hit = true;
         // TODO: implement here the bounding volume hierarchy traversal.
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
-        return false;
+        return hit;
     }
 }
 
-
 /*
-* 
+*
     Visual Debug Method for Normal Interpolation
 
     This method is called in the BoundingVolumeHierarchy intersect method when there has been an intersection and for the vertices of the first triangle
     the ray intersects. We take the same ray from that intersects the triangle to compute point at which it intersects the triangle. The variable "features
-    ?s used to see whether NormalInterpolation is enabled at all. 
+    ?s used to see whether NormalInterpolation is enabled at all.
 
     Inside this method is called the drawNormal function from "draw.cpp"so that we have all the vertices drawn. Then the intersection point is computed along with the normal.
     The latter is done with methods from "interpolate.cpp"
@@ -338,5 +454,4 @@ void debugNormalInterpolation(const Vertex& v0, const Vertex& v1, const Vertex& 
     v3.normal = interpolatedNormal;
 
     drawNormal(v3, color);
-
 }

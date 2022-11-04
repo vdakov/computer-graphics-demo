@@ -22,7 +22,8 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
-        drawRay(ray, Lo);
+        if (enableDebugDraw)
+            drawRay(ray, Lo);
         float n = 1;
 
         
@@ -84,9 +85,10 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         if (features.enableRecursive && rayDepth<=features.maxDepth) {
             if (hitInfo.material.ks != glm::vec3(0.0f, 0.0f, 0.0f)) {
                 Ray reflection = computeReflectionRay(ray, hitInfo);
-                Lo+= getFinalColor(scene, bvh, reflection, features, rayDepth + 1);
+                Lo+= getFinalColor(scene, bvh, reflection, features, rayDepth + 1) * hitInfo.material.ks;
                 return Lo;
-            }
+ 
+           }
             // TODO: put your own implementation of recursive ray tracing here.
         }
 
@@ -123,7 +125,8 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         return Lo;
     } else {
         // Draw a red debug ray if the ray missed.
-        drawRay(ray, glm::vec3(1.0f, 0.0f, 0.0f));
+        if (enableDebugDraw)
+            drawRay(ray, glm::vec3(1.0f, 0.0f, 0.0f));
         // Set the color of the pixel to black if the ray misses.
         return glm::vec3(0.0f);
     }
