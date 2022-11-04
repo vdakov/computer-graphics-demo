@@ -102,7 +102,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
         }
     }
     // Call to function that will recursively fill in the node vector.
-    recursiveNodes(centroids, 0, 9);
+    recursiveNodes(centroids, 0, 20);
 }
 
 /*
@@ -261,34 +261,25 @@ float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, 
         AxisAlignedBox aabb { n.lower, n.upper };
         drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
 
-        float n1 { IntersectRayWithAABB(ray, nodes.at(n.indices[0])) };
-        float n2 { IntersectRayWithAABB(ray, nodes.at(n.indices[1])) };
+        long ni_0 { n.indices.at(0) };
+        long ni_1 { n.indices.at(1) };
+
+        float n1 { IntersectRayWithAABB(ray, nodes.at(ni_0)) };
+        float n2 { IntersectRayWithAABB(ray, nodes.at(ni_1)) };
         float tempResult {};
         if (n1 == FLT_MAX && n2 == FLT_MAX)
             return FLT_MAX;
         else if (n1 == FLT_MAX)
-            return TraverseBVH(ray, nodes.at(n.indices[1]), hitInfo, features, visitedTriangles);
+            return TraverseBVH(ray, nodes.at(ni_1), hitInfo, features, visitedTriangles);
         else if (n2 == FLT_MAX)
-            return TraverseBVH(ray, nodes.at(n.indices[0]), hitInfo, features, visitedTriangles);
-        else if (n1 < n2) {
-            float t_before { ray.t };
-            float n1_t { TraverseBVH(ray, nodes.at(n.indices[0]), hitInfo, features, visitedTriangles) };
-            if (ray.t < t_before)
-                return n1_t;
-            float n2_t { TraverseBVH(ray, nodes.at(n.indices[1]), hitInfo, features, visitedTriangles) };
-            return std::min(n1_t, n2_t);
+            return TraverseBVH(ray, nodes.at(ni_0), hitInfo, features, visitedTriangles);
+        else if (n2 < n1) 
+            std::swap(ni_0, ni_1);
+        float t_before { ray.t };
+        float n1_t { TraverseBVH(ray, nodes.at(ni_0), hitInfo, features, visitedTriangles) };
+        float n2_t { TraverseBVH(ray, nodes.at(ni_1), hitInfo, features, visitedTriangles) };
+        return std::min(n1_t, n2_t);
             
-        } else {
-            float t_before { ray.t };
-            float n2_t { TraverseBVH(ray, nodes.at(n.indices[1]), hitInfo, features, visitedTriangles) };
-            if (ray.t < t_before)
-                return n2_t;
-            float n1_t { TraverseBVH(ray, nodes.at(n.indices[0]), hitInfo, features, visitedTriangles) };
-            return std::min(n1_t, n2_t);
-        
-        
-        }
-            return std::min(TraverseBVH(ray, nodes.at(n.indices[1]), hitInfo, features, visitedTriangles), TraverseBVH(ray, nodes.at(n.indices[0]), hitInfo, features, visitedTriangles) );
  
     }
     float minT { FLT_MAX };
