@@ -56,12 +56,17 @@ struct ExtraFeatures {
     bool enableBvhSahBinning = false;
     bool enableMotionBlur = false;
     bool enableBloomEffect = false;
+    bool enableBloomDebug = false;
     bool enableBilinearTextureFiltering = false;
     bool enableMipmapTextureFiltering = false;
     bool enableMultipleRaysPerPixel = false;
     bool enableGlossyReflection = false;
     bool enableTransparency = false;
     bool enableDepthOfField = false;
+
+    int filterSize = 0;
+    float threshold = 0.9f;
+
 };
 
 struct Features {
