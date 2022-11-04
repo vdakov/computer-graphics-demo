@@ -258,27 +258,30 @@ float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, 
 {
     if (!n.isLeaf) {
 
-        AxisAlignedBox aabb { n.lower, n.upper };
-        drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
+        if (enableDebugDraw) {
+            AxisAlignedBox aabb { n.lower, n.upper };
+            drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
+        }
 
         long ni_0 { n.indices.at(0) };
         long ni_1 { n.indices.at(1) };
 
-        float n1 { IntersectRayWithAABB(ray, nodes.at(ni_0)) };
-        float n2 { IntersectRayWithAABB(ray, nodes.at(ni_1)) };
+        float n0 { IntersectRayWithAABB(ray, nodes.at(ni_0)) };
+        float n1 { IntersectRayWithAABB(ray, nodes.at(ni_1)) };
         float tempResult {};
-        if (n1 == FLT_MAX && n2 == FLT_MAX)
+        if (n0 == FLT_MAX && n1 == FLT_MAX) {
             return FLT_MAX;
-        else if (n1 == FLT_MAX)
+        } else if (n0 == FLT_MAX) {
             return TraverseBVH(ray, nodes.at(ni_1), hitInfo, features);
-        else if (n2 == FLT_MAX)
+        } else if (n1 == FLT_MAX) {
             return TraverseBVH(ray, nodes.at(ni_0), hitInfo, features);
-        else if (n2 < n1) 
-            std::swap(ni_0, ni_1);
+        } else if (n1 < n0) {
+		    std::swap(ni_0, ni_1);
+        }
         float t_before { ray.t };
-        float n1_t { TraverseBVH(ray, nodes.at(ni_0), hitInfo, features) };
-        float n2_t { TraverseBVH(ray, nodes.at(ni_1), hitInfo, features) };
-        return std::min(n1_t, n2_t);
+        float n0_t { TraverseBVH(ray, nodes.at(ni_0), hitInfo, features) };
+        float n1_t { TraverseBVH(ray, nodes.at(ni_1), hitInfo, features) };
+        return std::min(n0_t, n1_t);
             
  
     }
