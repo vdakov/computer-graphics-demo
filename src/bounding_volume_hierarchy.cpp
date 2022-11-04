@@ -231,7 +231,7 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
 }
 
 /*
- * Intersects ray with and Axis-Aligned Bounding Box. Returns FLT_MAX if no intersections are found, otherwise returns the
+ * Intersects ray with an Axis-Aligned Bounding Box. Returns FLT_MAX if no intersections are found, otherwise returns the
  * distance from the origin of the ray.
  */
 float BoundingVolumeHierarchy::IntersectRayWithAABB(Ray& ray, Node& n) const
