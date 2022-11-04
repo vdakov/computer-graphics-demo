@@ -32,14 +32,14 @@ glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Feat
     
 
     //implemented wrapping mode if texture coordinate is >1
-   float width = fmod(ceil(image.width * (texCoord.x)),image.width);
-   float height = fmod(ceil(image.height * (texCoord.y)),image.height);
+   float width = ceil(image.width * (texCoord.x));
+   float height = ceil(image.height * (texCoord.y));
 
 
-   int index = height* image.width - width;
-   int newIndex = image.height * image.width - index - 1; // reversed the image
+   int index = int(height * image.width - width) % int((int(image.width) * int(image.height)));
+   int newIndex = image.height * image.width - index -1; // reversed the image
 
-    return image.pixels[newIndex];
+   return image.pixels[newIndex];
 }
 
 

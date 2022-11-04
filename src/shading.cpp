@@ -4,6 +4,7 @@
 #include <shading.h>
 #include <vector>
 #include <random>
+#include <draw.h>
 
 
 
@@ -74,9 +75,24 @@ const std::vector<Ray> computeGlossyReflectionRay(Ray& ray, HitInfo& hitInfo, Fe
 
     //glm::vec3 w = normalize(intersectionPoint);
     Ray reflection = computeReflectionRay(ray,hitInfo); // non-colinear vector 
-    glm::vec3 w = normalize(ray.direction);
+    glm::vec3 w = normalize(reflection.direction);
     glm::vec3 u = normalize(glm::cross(ray.direction, hitInfo.normal));
     glm::vec3 v = normalize(glm::cross(w,u));
+
+    Vertex v0;
+    Vertex v1;
+    Vertex v2; 
+    Vertex v3; 
+
+    v0.position = glm::vec3 { reflection.origin + w * 0.25f + (v - u) * a };
+    v1.position = glm::vec3 { reflection.origin + w * 0.25f + (u - v) * a };
+    v2.position = glm::vec3 { reflection.origin + w * 0.25f + (v + u) * a };
+    v3.position = glm::vec3 { reflection.origin + w * 0.25f - (u + v) * a };
+
+
+
+    drawTriangle(v0, v1, v2);
+    drawTriangle(v3, v1, v0);
     
    
     for (int i = 0; i < n; i++) {
