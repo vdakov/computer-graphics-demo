@@ -38,7 +38,7 @@ public:
     void debugDrawLeaf(int leafIdx);
 
 
-    float TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, const Features& features) const;
+    float TraverseBVH(Ray& ray, Node* n, HitInfo& hitInfo, const Features& features) const;
 
     float IntersectRayWithAABB(Ray& ray, Node& n) const;
 
