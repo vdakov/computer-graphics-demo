@@ -300,7 +300,7 @@ float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node* n, HitInfo& hitInfo, 
 
             for (int i = 0; i < currNode->indices.size(); i += 2) {
                 float prior_t { ray.t }; // Used for visual debug
-                Mesh foundMesh { m_pScene->meshes.at(currNode->indices[i]) };
+                Mesh& foundMesh { m_pScene->meshes.at(currNode->indices[i]) };
                 const auto& tri { foundMesh.triangles.at(currNode->indices[i + 1]) };
                 const auto v0 = foundMesh.vertices[tri[0]];
                 const auto v1 = foundMesh.vertices[tri[1]];
