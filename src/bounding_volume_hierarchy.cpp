@@ -284,7 +284,9 @@ float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, 
         return std::min(n0_t, n1_t);
     }
     float minT { FLT_MAX };
+    static std::optional<std::pair<Mesh, glm::uvec3>> debugTri; // Used for visual debug
     for (int i = 0; i < n.indices.size(); i += 2) {
+        float prior_t { ray.t };
         Mesh foundMesh { m_pScene->meshes.at(n.indices[i]) };
         const auto& tri { foundMesh.triangles.at(n.indices[i + 1]) };
         const auto v0 = foundMesh.vertices[tri[0]];
@@ -312,11 +314,20 @@ float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, 
                 hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
             }
             if (enableDebugDraw) {
-                std::vector<glm::vec3> colors = { glm::vec3 { 1.0f, 0.0f, 1.0f }, glm::vec3 { 0.5f, 0.0f, 0.5f }, glm::vec3 { 0.87f, 0.0f, 1.0f },
-                    glm::vec3 { 1.0f, 0.46f, 1.0f } };
-                glColor3f(colors.at(i % colors.size())[0], colors.at(i % colors.size())[1], colors.at(i % colors.size())[2]);
-                drawTriangle(foundMesh.vertices.at(tri[0]), foundMesh.vertices.at(tri[1]), foundMesh.vertices.at(tri[2]));
-            }
+                if (ray.t < prior_t) {
+                    glm::vec3 color { 1.0f, 0.0f, 1.0f };
+                    glColor3f(color.x, color.y, color.z);
+                    drawTriangle(foundMesh.vertices.at(tri[0]), foundMesh.vertices.at(tri[1]), foundMesh.vertices.at(tri[2]));
+                    if (debugTri && debugTri->second != tri) {
+                        color = { 0.0f, 0.0f, 1.0f };
+                        glColor3f(color.x, color.y, color.z);
+                        drawTriangle(debugTri->first.vertices.at(debugTri->second[0]), 
+                            debugTri->first.vertices.at(debugTri->second[1]), 
+                            debugTri->first.vertices.at(debugTri->second[2]));
+                    }
+                    debugTri = {foundMesh, tri};
+                }
+           }
 
             minT = std::min(minT, ray.t);
         }

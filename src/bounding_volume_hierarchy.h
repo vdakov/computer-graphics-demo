@@ -40,6 +40,8 @@ public:
 
     float TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, const Features& features) const;
 
+    float IntersectRayWithAABB(Ray& ray, Node& n) const;
+
 
     // Return true if something is hit, returns false otherwise.
     // Only find hits if they are closer than t stored in the ray and the intersection
@@ -53,6 +55,5 @@ private:
     int m_numLeaves;
     Scene* m_pScene;
 
-    float IntersectRayWithAABB(Ray& ray, Node& n) const;
 };
 
