@@ -230,6 +230,10 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
 }
 
+/*
+ * Intersects ray with and Axis-Aligned Bounding Box. Returns FLT_MAX if no intersections are found, otherwise returns the
+ * distance from the origin of the ray.
+ */
 float BoundingVolumeHierarchy::IntersectRayWithAABB(Ray& ray, Node& n) const
 {
     float txmin { (n.lower.x - ray.origin.x) / ray.direction.x };
@@ -254,6 +258,10 @@ float BoundingVolumeHierarchy::IntersectRayWithAABB(Ray& ray, Node& n) const
     return tin;
 }
 
+/*
+ * Helper method for recursive BVH traversal. Returns the distance from the closest intersection point. If no intersections are found,
+ * returns FLT_MAX.
+ */
 float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, const Features& features) const
 {
     if (!n.isLeaf) {
@@ -286,7 +294,7 @@ float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, 
     float minT { FLT_MAX };
     static std::optional<std::pair<Mesh, glm::uvec3>> debugTri; // Used for visual debug
     for (int i = 0; i < n.indices.size(); i += 2) {
-        float prior_t { ray.t };
+        float prior_t { ray.t };                                // Used for visual debug
         Mesh foundMesh { m_pScene->meshes.at(n.indices[i]) };
         const auto& tri { foundMesh.triangles.at(n.indices[i + 1]) };
         const auto v0 = foundMesh.vertices[tri[0]];
