@@ -254,7 +254,7 @@ float BoundingVolumeHierarchy::IntersectRayWithAABB(Ray& ray, Node& n) const
     return tin;
 }
 
-float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, const Features& features, std::vector<std::pair<long, long>>& visitedTriangles) const
+float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, const Features& features) const
 {
     if (!n.isLeaf) {
 
@@ -270,14 +270,14 @@ float BoundingVolumeHierarchy::TraverseBVH(Ray& ray, Node& n, HitInfo& hitInfo, 
         if (n1 == FLT_MAX && n2 == FLT_MAX)
             return FLT_MAX;
         else if (n1 == FLT_MAX)
-            return TraverseBVH(ray, nodes.at(ni_1), hitInfo, features, visitedTriangles);
+            return TraverseBVH(ray, nodes.at(ni_1), hitInfo, features);
         else if (n2 == FLT_MAX)
-            return TraverseBVH(ray, nodes.at(ni_0), hitInfo, features, visitedTriangles);
+            return TraverseBVH(ray, nodes.at(ni_0), hitInfo, features);
         else if (n2 < n1) 
             std::swap(ni_0, ni_1);
         float t_before { ray.t };
-        float n1_t { TraverseBVH(ray, nodes.at(ni_0), hitInfo, features, visitedTriangles) };
-        float n2_t { TraverseBVH(ray, nodes.at(ni_1), hitInfo, features, visitedTriangles) };
+        float n1_t { TraverseBVH(ray, nodes.at(ni_0), hitInfo, features) };
+        float n2_t { TraverseBVH(ray, nodes.at(ni_1), hitInfo, features) };
         return std::min(n1_t, n2_t);
             
  
@@ -387,8 +387,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         std::vector<float> intersections {};
         std::pair<long, float> closestAABB {0, FLT_MAX};
         float minT { FLT_MAX };
-        std::vector<std::pair<long, long>> visitedLeaves {};
-        minT = std::min(TraverseBVH(ray, nodes.at(nodes.size() - 1), hitInfo, features, visitedLeaves), minT);
+        minT = std::min(TraverseBVH(ray, nodes.at(nodes.size() - 1), hitInfo, features), minT);
 
         if (minT != FLT_MAX)
             hit = true;
