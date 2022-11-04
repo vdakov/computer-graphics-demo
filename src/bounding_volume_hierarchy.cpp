@@ -102,7 +102,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
         }
     }
     // Call to function that will recursively fill in the node vector.
-    recursiveNodes(centroids, 0, 20);
+    recursiveNodes(centroids, 0, 9);
 }
 
 /*
