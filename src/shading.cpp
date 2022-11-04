@@ -69,7 +69,7 @@ const std::vector<Ray> computeGlossyReflectionRay(Ray& ray, HitInfo& hitInfo, Fe
     std::mt19937 mtGen(random());
     std::normal_distribution<> normal(0.0, 1.0);
     
-    float a = features.sideSquareGlossy/10.0f;
+    float a = hitInfo.material.shininess/(features.sideSquareGlossy* 10.0f);
     float alpha = -a / 2.0f + normal(mtGen) * a;
     float beta = -a / 2.0f + normal(mtGen) * a;
 

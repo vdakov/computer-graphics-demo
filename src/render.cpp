@@ -56,7 +56,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
                 std::vector<Ray> reflections = computeGlossyReflectionRay(ray, hitInfo, features);
 
                 float n = features.split;
-                if (features.extra.enableGlossyReflection) {
+                if (features.extra.enableIrregularSampling) {
                     n *= features.samplesIrregular;
                 }
 
