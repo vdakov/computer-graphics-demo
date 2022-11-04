@@ -12,17 +12,21 @@ void debugNormalInterpolation(const Vertex& v0, const Vertex& v1, const Vertex& 
 
 std::vector<Node> nodes;
 
-void recursiveNodes(Scene* scene, std::vector<centerTri>& centroids, std::vector<Node>& nodes, int axis, int maxLevel)
+/*
+    Recursively computes node information and creates nodes. Stores them in the node vector.
+    Parameters: centroids - a vector of centerTri's that contain info about a triangle's centroid;
+                nodes - the node vector;
+                axis - the axis by which the triangles should be split into two parts;
+                maxLevel - the maximum level the BVH should be built up to.
+*/
+void recursiveNodes(std::vector<centerTri>& centroids, int axis, int maxLevel)
 {
-
     glm::vec3 upper { -FLT_MAX };
     glm::vec3 lower { FLT_MAX };
     Mesh mesh;
+
+    // Loop to find the upper and lower bounds of the aabb of a node.
     for (centerTri tri : centroids) {
-        /*mesh = scene->meshes.at(tri.mesh);
-        auto v0 = mesh.vertices.at(mesh.triangles.at(tri.triangle)[0]).position;
-        auto v1 = mesh.vertices.at(mesh.triangles.at(tri.triangle)[1]).position;
-        auto v2 = mesh.vertices.at(mesh.triangles.at(tri.triangle)[2]).position;*/
         upper.x = std::max({ upper.x, tri.vertices[0].x, tri.vertices[1].x, tri.vertices[2].x });
         upper.y = std::max({ upper.y, tri.vertices[0].y, tri.vertices[1].y, tri.vertices[2].y });
         upper.z = std::max({ upper.z, tri.vertices[0].z, tri.vertices[1].z, tri.vertices[2].z });
@@ -31,6 +35,7 @@ void recursiveNodes(Scene* scene, std::vector<centerTri>& centroids, std::vector
         lower.z = std::min({ lower.z, tri.vertices[0].z, tri.vertices[1].z, tri.vertices[2].z });
     }
 
+    // Checks for base case of recursion.
     if (maxLevel == 0 || centroids.size() == 1) {
         std::vector<long> idx;
         for (centerTri tri : centroids) {
@@ -45,6 +50,7 @@ void recursiveNodes(Scene* scene, std::vector<centerTri>& centroids, std::vector
         return;
     }
 
+    // Sorts centroids by given axis and splits them down the middle into two vectors.
     std::sort(centroids.begin(), centroids.end(),
         [axis](const centerTri& x, const centerTri& y) -> bool { return x.centroid[axis] < y.centroid[axis]; });
     int median = centroids.size() / 2 + centroids.size() % 2;
@@ -56,11 +62,13 @@ void recursiveNodes(Scene* scene, std::vector<centerTri>& centroids, std::vector
     } else {
         ++axis;
     }
-    recursiveNodes(scene, left, nodes, axis, (maxLevel - 1));
-    long idx1 = nodes.size() - 1;
-    recursiveNodes(scene, right, nodes, axis, (maxLevel - 1));
-    long idx2 = nodes.size() - 1;
+    // Calls the recursive function and computes the indices of the child nodes after each call.
+    recursiveNodes(left, axis, (maxLevel-1));
+    long idx1 = nodes.size()-1;
+    recursiveNodes(right, axis, (maxLevel-1));
+    long idx2 = nodes.size()-1;
 
+    // Adds node to node vector.
     nodes.push_back(
         Node {
             .isLeaf = false,
@@ -69,12 +77,17 @@ void recursiveNodes(Scene* scene, std::vector<centerTri>& centroids, std::vector
             .indices = std::vector { idx1, idx2 } });
 }
 
+/*
+    Method that creates the bounding volume hierarchy.
+*/
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
 {
-    // TODO: implement BVH construction.
+    // Clears node vector so that a newly loaded scene only contains correct nodes.
     nodes.clear();
     std::vector<centerTri> centroids;
+
+    // Loop that computes the centroid for every triangle and stores it in a centerTri struct with additional information.
     for (int i = 0; i < pScene->meshes.size(); i++) {
         for (int j = 0; j < pScene->meshes.at(i).triangles.size(); j++) {
             glm::vec3 v0 = pScene->meshes.at(i).vertices[pScene->meshes.at(i).triangles[j][0]].position;
@@ -88,11 +101,14 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
                     .centroid = v0 + (v1 - v0) / 2.0f + (v2 - v0) / 2.0f });
         }
     }
-    recursiveNodes(pScene, centroids, nodes, 0, 10); // Maximum levels: 10
+    // Call to function that will recursively fill in the node vector.
+    recursiveNodes(centroids, 0, 9);
 }
 
-int numLevelsHelper(int idx)
-{
+/*
+    Recursive function to count node tree depth.
+*/
+int numLevelsHelper(int idx) {
     if (nodes.at(idx).isLeaf) {
         return 1;
     } else {
@@ -100,15 +116,17 @@ int numLevelsHelper(int idx)
     }
 }
 
-// Return the depth of the tree that you constructed. This is used to tell the
-// slider in the UI how many steps it should display for Visual Debug 1.
+/*
+    Computes the number of levels in the BVH.
+*/
 int BoundingVolumeHierarchy::numLevels() const
 {
     return numLevelsHelper(nodes.size() - 1);
 }
 
-// Return the number of leaf nodes in the tree that you constructed. This is used to tell the
-// slider in the UI how many steps it should display for Visual Debug 2.
+/*
+    Computes the number of leaves among the nodes.
+*/
 int BoundingVolumeHierarchy::numLeaves() const
 {
     int count = 0;
@@ -120,16 +138,14 @@ int BoundingVolumeHierarchy::numLeaves() const
     return count;
 }
 
-// Use this function to visualize your BVH. This is useful for debugging. Use the functions in
-// draw.h to draw the various shapes. We have extended the AABB draw functions to support wireframe
-// mode, arbitrary colors and transparency.
+/*
+    Visualises each level of the BVH (level selected by adjusting the slider). Draws the AABB of each node on given level using the drawAABB function from draw.cpp
+*/
 void BoundingVolumeHierarchy::debugDrawLevel(int level)
 {
     m_numLevels = numLevels();
-    // Draw the AABB as a transparent green box.
-    // AxisAlignedBox aabb{ glm::vec3(-0.05f), glm::vec3(0.05f, 1.05f, 1.05f) };
-    // drawShape(aabb, DrawMode::Filled, glm::vec3(0.0f, 1.0f, 0.0f), 0.2f);
-    std::vector<Node> nodes1 { nodes.at(nodes.size() - 1) };
+
+    std::vector<Node> nodes1 { nodes.at(nodes.size()-1) };
     std::vector<Node> nodes2;
     Node temp;
     for (int i = 0; i < level; i++) {
@@ -168,22 +184,17 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
             drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
         }
     }
-    // Draw the AABB as a (white) wireframe box.
-    // AxisAlignedBox aabb { nodes.at(nodes.size() - 1).lower, nodes.at(nodes.size()-1).upper };
-    // drawAABB(aabb, DrawMode::Wireframe);
-    // drawAABB(aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
 }
 
-// Use this function to visualize your leaf nodes. This is useful for debugging. The function
-// receives the leaf node to be draw (think of the ith leaf node). Draw the AABB of the leaf node and all contained triangles.
-// You can draw the triangles with different colors. NoteL leafIdx is not the index in the node vector, it is the
-// i-th leaf node in the vector.
+
+/*
+    Visualises the 'leafIdx'-th leaf node of the node vector. Draws the AABB of the selected node as well as all the triangles that 
+    the node points to in different colors using drawAABB and drawTriangle functions from draw.cpp.
+*/
 void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
 {
     m_numLeaves = numLeaves();
-    // Draw the AABB as a transparent green box.
-    // AxisAlignedBox aabb{ glm::vec3(-0.05f), glm::vec3(0.05f, 1.05f, 1.05f) };
-    // drawShape(aabb, DrawMode::Filled, glm::vec3(0.0f, 1.0f, 0.0f), 0.2f);
+
     if (leafIdx > m_numLeaves) {
         leafIdx = 0;
     }
@@ -217,13 +228,6 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
 
     AxisAlignedBox aabb { nodes.at(index).lower, nodes.at(index).upper };
     drawAABB(aabb, DrawMode::Wireframe, glm::vec3(1.0f), 1.0f);
-
-    // Draw the AABB as a (white) wireframe box.
-    // AxisAlignedBox aabb { glm::vec3(0.0f), glm::vec3(0.0f, 1.05f, 1.05f) };
-    // drawAABB(aabb, DrawMode::Wireframe);
-    // drawAABB(aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
-
-    // once you find the leaf node, you can use the function drawTriangle (from draw.h) to draw the contained primitives
 }
 
 float BoundingVolumeHierarchy::IntersectRayWithAABB(Ray& ray, Node& n) const
@@ -319,31 +323,33 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                     const glm::vec3 intersectionPoint = ray.origin + ray.t * ray.direction;
                     hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, intersectionPoint);
 
-
                     if (features.enableNormalInterp) {
                         hitInfo.normal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
                     }
 
                     /*
-                     * IF TEXTURE MAPPING IS ENABLED:
-                     *
-                     * Computes all the fields necessary for the Hitpoint object. It represents the point a ray in a scene intesects and in this case
-                     * it makes all the computations necessary for textures through the methods in "interpolate.cpp".
-                     *
-                     */
-                    if (features.enableTextureMapping) {
+                    * IF TEXTURE MAPPING IS ENABLED:
+                    * 
+                    * Computes all the fields necessary for the Hitpoint object. It represents the point a ray in a scene intesects and in this case
+                    * it makes all the computations necessary for textures through the methods in "interpolate.cpp". 
+                    * 
+                    */
+                    if (features.enableTextureMapping ){
                         hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
                     }
 
                     hit = true;
                 }
-                // retrieves the vertices and ray weight of the triangle the ray intersects first
+
+                //retrieves the vertices and ray weight of the triangle the ray intersects first 
                 if (ray.t < currentRay) {
-                    currentRay = ray.t;
-                    v_0 = v0;
-                    v_1 = v1;
-                    v_2 = v2;
+                        currentRay = ray.t;
+                        v_0 = v0;
+                        v_1 = v1;
+                        v_2 = v2;
                 }
+
+                
             }
         }
         // Intersect with spheres.

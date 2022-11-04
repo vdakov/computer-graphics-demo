@@ -65,13 +65,18 @@ struct ExtraFeatures {
 };
 
 struct Features {
-    bool enableShading = true;
-    bool enableRecursive = true;
+    bool enableShading = false;
+    bool enableRecursive = false;
     bool enableHardShadow = false;
     bool enableSoftShadow = false;
     bool enableNormalInterp = false;
     bool enableTextureMapping = false;
     bool enableAccelStructure = true;
+
+    int samples = 10;
+    int maxDepth = 1;
+    int split = 4;
+    int sideSquareGlossy = 1;
 
     int samples = 10;
     int maxDepth = 1;

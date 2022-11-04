@@ -17,7 +17,6 @@
       "cmakeCommandArgs": "",
       "configurationType": "RelWithDebInfo",
       "ctestCommandArgs": "",
-      "generator": "Ninja",
       "inheritEnvironments": [ "msvc_x64_x64" ],
       "installRoot": "${projectDir}\\out\\install\\${name}",
       "name": "x64-Release"
