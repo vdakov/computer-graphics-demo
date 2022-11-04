@@ -92,7 +92,7 @@ float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& deb
         float t = (samplePos - p).x / dir.x;
 
         if (glm::dot(hitInfo.normal, ray.direction) > 0) {
-            drawRay(Ray {p,dir,t}, debugColor); // Visual debug
+            drawRay(Ray { p, dir, t }, glm::vec3 { 1, 0, 0 }); // Visual debug
             return 0.0;
         }
 

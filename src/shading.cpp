@@ -69,7 +69,7 @@ const std::vector<Ray> computeGlossyReflectionRay(Ray& ray, HitInfo& hitInfo, Fe
     std::mt19937 mtGen(random());
     std::normal_distribution<> normal(0.0, 1.0);
     
-    float a = features.sideSquareGlossy/100.0f;
+    float a = hitInfo.material.shininess/(features.sideSquareGlossy* 100.0f);
     float alpha = -a / 2.0f + normal(mtGen) * a;
     float beta = -a / 2.0f + normal(mtGen) * a;
 
@@ -109,4 +109,52 @@ const std::vector<Ray> computeGlossyReflectionRay(Ray& ray, HitInfo& hitInfo, Fe
     }
 
     return dispersed;
+}
+
+
+const std::vector<Ray> computeRayIrregular(const Ray& ray, HitInfo& hitInfo, Features features)
+{
+    int n = features.samplesIrregular;
+
+    std::vector<Ray> irregular;
+    std::random_device random;
+    std::mt19937 mtGen(random());
+    std::uniform_real_distribution<> uniform(0.0, 1.0);
+
+    float a = (features.sideSquareIrregular/ 100.0f); //we once again generate a random square
+    float alpha = -a / 2.0f + uniform(mtGen) * a;
+    float beta = -a / 2.0f + uniform(mtGen) * a;
+
+    // glm::vec3 w = normalize(intersectionPoint);
+    Ray reflection = computeReflectionRay(ray, hitInfo); // non-colinear vector
+    glm::vec3 w = normalize(ray.direction);
+    glm::vec3 u = normalize(glm::cross(ray.direction, hitInfo.normal));
+    glm::vec3 v = normalize(glm::cross(w, u));
+
+    Vertex v0;
+    Vertex v1;
+    Vertex v2;
+    Vertex v3;
+
+    v0.position = glm::vec3 { ray.origin + w * 0.5f + (v - u) * a };
+    v1.position = glm::vec3 { ray.origin + w * 0.5f + (u - v) * a };
+    v2.position = glm::vec3 { ray.origin + w * 0.5f + (v + u) * a };
+    v3.position = glm::vec3 { ray.origin + w * 0.5f - (u + v) * a };
+
+    drawTriangle(v0, v1, v2);
+    drawTriangle(v3, v1, v0);
+
+    for (int i = 0; i < n; i++) {
+        glm::vec3 pointOnParallelogram = ray.direction + alpha * u + beta * v;
+        alpha = -a / 2.0f + uniform(mtGen) * a;
+        beta = -a / 2.0f + uniform(mtGen) * a;
+
+        Ray scattered = Ray { .origin = ray.origin,
+            .direction = normalize(pointOnParallelogram),
+            .t = std::numeric_limits<float>::max() };
+
+        irregular.push_back(scattered);
+    }
+
+    return irregular;
 }

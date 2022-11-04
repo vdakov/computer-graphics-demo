@@ -160,6 +160,8 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Glossy reflections", &config.features.extra.enableGlossyReflection);
                 ImGui::Checkbox("Transparency", &config.features.extra.enableTransparency);
                 ImGui::Checkbox("Depth of field", &config.features.extra.enableDepthOfField);
+                ImGui::Checkbox("Irregular Sampling", &config.features.extra.enableIrregularSampling);
+
             }
             ImGui::Separator();
 
@@ -211,12 +213,31 @@ int main(int argc, char** argv)
                     ImGui::SliderInt("BVH Leaf", &bvhDebugLeaf, 1, bvh.numLeaves());
                 ImGui::Text("Samples Soft Shadows");
                 ImGui::SliderInt("smpls", &config.features.samples, 0, 1000);
-                ImGui::Text("G_Reflections Depth");
-                ImGui::SliderInt("md", &config.features.maxDepth, 0, 20);
-                ImGui::Text("Num of Rays to Split Into");
-                ImGui::SliderInt("slt", &config.features.split, 10, 100);
-                ImGui::Text("Square Size A");
-                ImGui::SliderInt("ssg", &config.features.sideSquareGlossy, 1, 10);
+
+                if (config.features.extra.enableGlossyReflection) {
+                    ImGui::Separator();
+                    ImGui::Indent();
+                    ImGui::Text("G_Reflections Depth");
+                    ImGui::SliderInt("md", &config.features.maxDepth, 0, 20);
+                    ImGui::Text("Num of Rays to Split Into");
+                    ImGui::SliderInt("slt", &config.features.split, 10, 100);
+                    ImGui::Text("Square Size A");
+                    ImGui::SliderInt("ssg", &config.features.sideSquareGlossy, 1, 10);
+                    ImGui::Unindent();
+                    ImGui::Separator();
+                }
+
+                if (config.features.extra.enableIrregularSampling) {
+                    ImGui::Separator();
+                    ImGui::Indent();
+                    ImGui::Text("Irregular Samples");
+                    ImGui::SliderInt("Samples", &config.features.samplesIrregular, 1, 20);
+                    ImGui::Unindent();
+                    ImGui::Text("Square Size A");
+                    ImGui::SliderInt("ssg", &config.features.sideSquareIrregular, 1, 10);
+                    ImGui::Separator();
+                }
+                
 
             }
 

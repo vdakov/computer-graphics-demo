@@ -63,6 +63,7 @@ struct ExtraFeatures {
     bool enableGlossyReflection = false;
     bool enableTransparency = false;
     bool enableDepthOfField = false;
+    bool enableIrregularSampling = false;
 
     int filterSize = 0;
     float threshold = 0.9f;
@@ -78,10 +79,13 @@ struct Features {
     bool enableTextureMapping = false;
     bool enableAccelStructure = true;
 
+
     int samples = 10;
+    int samplesIrregular = 10;
     int maxDepth = 1;
     int split = 4;
     int sideSquareGlossy = 1;
+    int sideSquareIrregular = 1;
 
     ExtraFeatures extra = {};
 };
