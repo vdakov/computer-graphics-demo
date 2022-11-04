@@ -69,7 +69,7 @@ const std::vector<Ray> computeGlossyReflectionRay(Ray& ray, HitInfo& hitInfo, Fe
     std::mt19937 mtGen(random());
     std::normal_distribution<> normal(0.0, 1.0);
     
-    float a = hitInfo.material.shininess/(features.sideSquareGlossy* 10.0f);
+    float a = hitInfo.material.shininess/(features.sideSquareGlossy* 100.0f);
     float alpha = -a / 2.0f + normal(mtGen) * a;
     float beta = -a / 2.0f + normal(mtGen) * a;
 
@@ -112,16 +112,16 @@ const std::vector<Ray> computeGlossyReflectionRay(Ray& ray, HitInfo& hitInfo, Fe
 }
 
 
-const std::vector<Ray> computeRayIrregular(Ray& ray, HitInfo& hitInfo, Features features)
+const std::vector<Ray> computeRayIrregular(const Ray& ray, HitInfo& hitInfo, Features features)
 {
-    int n = features.split;
+    int n = features.samplesIrregular;
 
     std::vector<Ray> irregular;
     std::random_device random;
     std::mt19937 mtGen(random());
     std::uniform_real_distribution<> uniform(0.0, 1.0);
 
-    float a = 0.03; //we once again generate a random square
+    float a = (features.sideSquareIrregular/ 100.0f); //we once again generate a random square
     float alpha = -a / 2.0f + uniform(mtGen) * a;
     float beta = -a / 2.0f + uniform(mtGen) * a;
 

@@ -85,6 +85,7 @@ struct Features {
     int maxDepth = 1;
     int split = 4;
     int sideSquareGlossy = 1;
+    int sideSquareIrregular = 1;
 
     ExtraFeatures extra = {};
 };

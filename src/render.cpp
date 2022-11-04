@@ -23,29 +23,23 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
         drawRay(ray, Lo);
-
+        float n = 1;
 
         
         if (features.extra.enableIrregularSampling && rayDepth<=0) {
                 
-                float n = features.samplesIrregular;
-                if (features.extra.enableGlossyReflection) {
-                    n *= features.split;
-                }
-          
-
+                n = features.samplesIrregular;
                 std::vector<Ray> scattered = computeRayIrregular(ray, hitInfo, features);
 
                 glm::vec3 color { 0 };
                 for (Ray r : scattered) {
                     color += getFinalColor(scene, bvh, r, features, rayDepth + 1);
                 }
-                color /= n;
+               
 
-                Lo += color;
+                return color / n;
 
-              
-            
+             
         }
 
         
@@ -56,9 +50,9 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
                 std::vector<Ray> reflections = computeGlossyReflectionRay(ray, hitInfo, features);
 
                 float n = features.split;
-                if (features.extra.enableIrregularSampling) {
+               /* if (features.extra.enableIrregularSampling) {
                     n *= features.samplesIrregular;
-                }
+                }*/
 
                
                 glm::vec3 color { 0 };
@@ -68,7 +62,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
                 }
                 color /= n;
                 
-                Lo += color;
+                Lo = color;
 
                 /*  
                     Calls the glossy reflection ray method in shading.cpp and averages out the colors for each of them and adds it to the final color for 
@@ -173,7 +167,35 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
                 float(y) / float(windowResolution.y) * 2.0f - 1.0f
             };
             const Ray cameraRay = camera.generateRay(normalizedPixelPos);
-            screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features));
+
+            //if (features.extra.enableIrregularSampling) {
+            //    glm::vec3 Lo = glm::vec3 { 0.f };
+            //    HitInfo hitInfo;
+            //    Ray copy = Ray { cameraRay };
+            //    if (bvh.intersect(copy, hitInfo, features)) {
+            //        int n = features.samplesIrregular;
+            //        if (features.extra.enableGlossyReflection) {
+            //            n *= features.split;
+            //        }
+
+            //        std::vector<Ray> scattered = computeRayIrregular(cameraRay, hitInfo, features);
+
+            //        glm::vec3 color { 0 };
+            //        for (Ray r : scattered) {
+            //            color += getFinalColor(scene, bvh, r, features, 0);
+            //        }
+            //        // color /= n;
+
+            //        Lo = color / float(scattered.size());
+            //        screen.setPixel(x, y, Lo);
+            //    } else {
+            //        screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features));
+            //    }
+            //    
+            //} else {
+                screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features));
+            
+            
         }
     }
 
